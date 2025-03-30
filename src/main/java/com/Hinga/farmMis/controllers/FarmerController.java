@@ -19,15 +19,25 @@ public class FarmerController {
         this.jwtService = jwtService;
     }
 
-    @PostMapping("/addfarmer")
+    @PostMapping("/farmerRegister")
     public ResponseEntity<String> registerFarmer(@RequestBody Farmer farmer) {
         // Register the farmer and save to the database
         Farmer savedFarmer = farmerService.registerFarmer(farmer);
 
         // Generate JWT token for the newly registered farmer
         String token = jwtService.generateToken(savedFarmer.getEmail());
-
         // Respond with a success message and the generated token
         return ResponseEntity.ok("Farmer registered successfully. Token: " + token);
+    }
+
+    @PostMapping("/farmerLogin")
+    public ResponseEntity<?> farmerLogin(@RequestBody Farmer farmer){
+        Farmer savedFarmer=farmerService.farmerLogin(farmer);
+
+        if(savedFarmer==null){
+            return ResponseEntity.status(400).body("Invalid email or password");
+        }
+        String token=jwtService.generateToken(savedFarmer.getEmail());
+        return ResponseEntity.ok(savedFarmer+" logged in successfully. Token: " + token);
     }
 }

@@ -5,6 +5,8 @@ import com.Hinga.farmMis.repository.FarmerRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.Optional;
+
 @Service
 public class FarmerService {
 
@@ -27,5 +29,18 @@ public class FarmerService {
         }
 
         return farmerRepository.save(farmer);
+    }
+
+    public Farmer farmerLogin(Farmer farmer){
+       Optional<Farmer> farmer1=farmerRepository.findByEmail(farmer.getEmail());
+        if(!farmer1.isPresent()){
+            System.out.println("Farmer with this email is not found");
+            return null;
+        }
+        Farmer existingFarmer=farmer1.get();
+        if(!passwordEncoder.matches(farmer.getPassword(),existingFarmer.getPassword())){
+            System.out.println("Farmer with this password is not found");
+        }
+       return existingFarmer;
     }
 }
