@@ -2,39 +2,30 @@ package com.Hinga.farmMis.services;
 
 import com.Hinga.farmMis.Model.Farmer;
 import com.Hinga.farmMis.repository.FarmerRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-
-import java.util.List;
-
 
 @Service
 public class FarmerService {
 
-    public FarmerService() {}
 
-    @Autowired
-    private FarmerRepository farmerRepository;
-    public Farmer addFarmer(Farmer farmer) {
-        farmerRepository.save(farmer);
-        return farmer;
+    private final FarmerRepository farmerRepository;
+    private final PasswordEncoder passwordEncoder;
+
+    public FarmerService(FarmerRepository farmerRepository, PasswordEncoder passwordEncoder) {
+        this.farmerRepository = farmerRepository;
+        this.passwordEncoder = passwordEncoder;
     }
 
-    public List<Farmer> getFarmers() {
-        return farmerRepository.findAll();
-    }
+    public Farmer registerFarmer(Farmer farmer) {
+        // Hash password before saving
+        farmer.setPassword(passwordEncoder.encode(farmer.getPassword()));
 
-
-    public Farmer getFarmer(int id) {
-        return farmerRepository.findById(1).get();
-
-    }
-
-    public void deleteFarmer(int id) {
-        Farmer farmer = farmerRepository.findById(id).get();
-        if(farmer != null) {
-            farmerRepository.delete(farmer);
+        // Set a default role if not provided
+        if (farmer.getRole() == null || farmer.getRole().isEmpty()) {
+            farmer.setRole("ROLE_USER");
         }
-    }
 
+        return farmerRepository.save(farmer);
+    }
 }

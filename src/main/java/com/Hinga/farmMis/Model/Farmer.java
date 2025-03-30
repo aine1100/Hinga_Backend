@@ -1,50 +1,69 @@
 package com.Hinga.farmMis.Model;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
-import java.util.List;
+import lombok.*;
 
 @Entity
-@Table(name = "farmers")  // Explicit table name
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Table(name = "farmers")
 public class Farmer {
+
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)  // Use IDENTITY for better DB support
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     private String name;
 
-
-    @Column(unique = true, nullable = false)  // Ensure email is unique and not null
+    @Column(unique = true)
     private String email;
 
-    private String password;  // Will be hashed before saving
+    private String password;
 
-    @OneToMany(mappedBy = "farmer", cascade = CascadeType.ALL, orphanRemoval = true)
-    @JsonIgnore  // Prevents infinite recursion in JSON responses
-    private List<Farm> farms;
+    private String role;
 
-    // Default Constructor
-    public Farmer() {}
+    // ROLE_USER or ROLE_ADMIN
 
-    public Farmer(String name, String email, String password) {
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
         this.name = name;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
         this.email = email;
+    }
+
+    public String getPassword() {
+        return password;
+    }
+
+    public void setPassword(String password) {
         this.password = password;
     }
 
-    // Getters and Setters
-    public Long getId() { return id; }
+    public String getRole() {
+        return role;
+    }
 
-
-    public String getName() { return name; }
-    public void setName(String name) { this.name = name; }
-
-    public String getEmail() { return email; }
-    public void setEmail(String email) { this.email = email; }
-
-    public String getPassword() { return password; }
-    public void setPassword(String password) { this.password = password; }  // Hash before saving
-
-    public List<Farm> getFarms() { return farms; }
-    public void setFarms(List<Farm> farms) { this.farms = farms; }
+    public void setRole(String role) {
+        this.role = role;
+    }
 }

@@ -2,34 +2,32 @@ package com.Hinga.farmMis.controllers;
 
 import com.Hinga.farmMis.Model.Farmer;
 import com.Hinga.farmMis.services.FarmerService;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.Hinga.farmMis.services.JwtService;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-
-@CrossOrigin(origins = "http://localhost:5173")
 @RestController
-@RequestMapping("/api")
+@RequestMapping("/api/auth")
+@CrossOrigin(origins = "http://localhost:5173")
 public class FarmerController {
-  private final FarmerService farmerService;
 
+    private final FarmerService farmerService;
+    private final JwtService jwtService;
 
-    @Autowired
-    public FarmerController(FarmerService farmerService) {
+    public FarmerController(FarmerService farmerService, JwtService jwtService) {
         this.farmerService = farmerService;
-    }
-
-    @GetMapping("/hello")
-    public String Greet(){
-        return "Welcome to Farmer Controller";
+        this.jwtService = jwtService;
     }
 
     @PostMapping("/addfarmer")
-    public Farmer postFarmer(@RequestBody Farmer farmer){
-       return  farmerService.addFarmer(farmer);
-    }
-    @GetMapping("/farmer")
-    public List<Farmer> getFarmer(){
-        return farmerService.getFarmers();
+    public ResponseEntity<String> registerFarmer(@RequestBody Farmer farmer) {
+        // Register the farmer and save to the database
+        Farmer savedFarmer = farmerService.registerFarmer(farmer);
+
+        // Generate JWT token for the newly registered farmer
+        String token = jwtService.generateToken(savedFarmer.getEmail());
+
+        // Respond with a success message and the generated token
+        return ResponseEntity.ok("Farmer registered successfully. Token: " + token);
     }
 }
