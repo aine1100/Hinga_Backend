@@ -9,7 +9,8 @@ import java.util.Optional;
 
 @Service
 public class FarmerService {
-
+    // Make regex constant and private
+    private static final String EMAIL_REGEX = "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$";
 
     private final FarmerRepository farmerRepository;
     private final PasswordEncoder passwordEncoder;
@@ -19,7 +20,25 @@ public class FarmerService {
         this.passwordEncoder = passwordEncoder;
     }
 
+    // Changed return type to boolean for isValidEmail
+    public boolean isValidEmail(String email) {
+        if (email == null) {
+            return false;
+        }
+        return email.matches(EMAIL_REGEX);
+    }
+
     public Farmer registerFarmer(Farmer farmer) {
+        // Validate email
+        if (!isValidEmail(farmer.getEmail())) {
+            throw new IllegalArgumentException("Invalid email format");
+        }
+
+        // Check if email already exists
+        if (farmerRepository.findByEmail(farmer.getEmail()).isPresent()) {
+            throw new IllegalStateException("Email already registered");
+        }
+
         // Hash password before saving
         farmer.setPassword(passwordEncoder.encode(farmer.getPassword()));
 
@@ -31,16 +50,23 @@ public class FarmerService {
         return farmerRepository.save(farmer);
     }
 
-    public Farmer farmerLogin(Farmer farmer){
-       Optional<Farmer> farmer1=farmerRepository.findByEmail(farmer.getEmail());
-        if(!farmer1.isPresent()){
-            System.out.println("Farmer with this email is not found");
-            return null;
+    public Farmer farmerLogin(Farmer farmer) {
+        if (!isValidEmail(farmer.getEmail())) {
+            throw new IllegalArgumentException("Invalid email format");
         }
-        Farmer existingFarmer=farmer1.get();
-        if(!passwordEncoder.matches(farmer.getPassword(),existingFarmer.getPassword())){
-            System.out.println("Farmer with this password is not found");
+
+        Optional<Farmer> farmerOptional = farmerRepository.findByEmail(farmer.getEmail());
+
+        if (!farmerOptional.isPresent()) {
+            throw new IllegalStateException("Farmer with this email not found");
         }
-       return existingFarmer;
+
+        Farmer existingFarmer = farmerOptional.get();
+
+        if (!passwordEncoder.matches(farmer.getPassword(), existingFarmer.getPassword())) {
+            throw new IllegalStateException("Invalid password");
+        }
+
+        return existingFarmer;
     }
 }

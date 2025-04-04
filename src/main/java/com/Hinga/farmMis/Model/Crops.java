@@ -1,37 +1,43 @@
 package com.Hinga.farmMis.Model;
 
-
 import jakarta.persistence.*;
+import lombok.*;
 
 import java.time.LocalDate;
 
 @Entity
-@Table
+@Table(name = "crop")
+@Getter
+@Setter
+@AllArgsConstructor
+@NoArgsConstructor
+
 public class Crops {
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private int id;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
     private String cropName;
-    private  String cropType;
     private LocalDate farmDate;
     private LocalDate harvestDate;
-    @ManyToOne
-    @JoinColumn(name = "farm_id")
-    private Farm farm;
 
-    public Farm getFarm() {
-        return farm;
+    // Ensures correct mapping in DB
+    private Long farmId;
+
+    public Long getId() {
+        return id;
     }
 
-    public void setFarm(Farm farm) {
-        this.farm = farm;
+    public void setId(Long id) {
+        this.id = id;
     }
 
-    public LocalDate getHarvestDate() {
-        return harvestDate;
+    public String getCropName() {
+        return cropName;
     }
 
-    public void setHarvestDate(LocalDate harvestDate) {
-        this.harvestDate = harvestDate;
+    public void setCropName(String cropName) {
+        this.cropName = cropName;
     }
 
     public LocalDate getFarmDate() {
@@ -42,19 +48,19 @@ public class Crops {
         this.farmDate = farmDate;
     }
 
-    public String getCropType() {
-        return cropType;
+    public LocalDate getHarvestDate() {
+        return harvestDate;
     }
 
-    public void setCropType(String cropType) {
-        this.cropType = cropType;
+    public void setHarvestDate(LocalDate harvestDate) {
+        this.harvestDate = harvestDate;
     }
 
-    public String getCropName() {
-        return cropName;
+    public Long getFarmId() {
+        return farmId;
     }
 
-    public void setCropName(String cropName) {
-        this.cropName = cropName;
+    public void setFarmId(Long farmId) {
+        this.farmId = farmId;
     }
 }

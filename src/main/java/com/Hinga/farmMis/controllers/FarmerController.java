@@ -10,7 +10,6 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/auth")
 @CrossOrigin(origins = "http://localhost:5173")
 public class FarmerController {
-
     private final FarmerService farmerService;
     private final JwtService jwtService;
 
@@ -22,6 +21,9 @@ public class FarmerController {
     @PostMapping("/farmerRegister")
     public ResponseEntity<String> registerFarmer(@RequestBody Farmer farmer) {
         // Register the farmer and save to the database
+        if(farmer.getPassword().length()<=5){
+            return ResponseEntity.status(400).body("Please enter the password of atleast 5 characters");
+        }
         Farmer savedFarmer = farmerService.registerFarmer(farmer);
 
         // Generate JWT token for the newly registered farmer

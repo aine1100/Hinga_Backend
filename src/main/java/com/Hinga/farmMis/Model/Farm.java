@@ -1,67 +1,75 @@
 package com.Hinga.farmMis.Model;
 
-
-
 import jakarta.persistence.*;
-
-import java.util.List;
+import lombok.*;
 
 @Entity
-@Table
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Table(name = "farms")
 public class Farm {
-    @Id @GeneratedValue(strategy = GenerationType.AUTO)
-    private int farmId;
-    private String Location;
-    private double area;
 
-    public Farm(String location, double area, Farmer farmer) {
-        Location = location;
-        this.area = area;
-        this.farmer = farmer;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private String name;   // Farm name
+    private String location;  // Location of the farm
+    private double size;   // Size of the farm (e.g., in acres)
+    private String type;   // Type of farm (e.g., crop, livestock, mixed)
+
+    @Column(nullable = false)
+    private String ownerEmail;
+    // ✅ This links the farm to a specific farmer
+
+
+    public Long getId() {
+        return id;
     }
 
-    @ManyToOne
-    @JoinColumn(name = "farmer_id")
-    private Farmer farmer;
-    @OneToMany(mappedBy = "farm")
-    private List<Crops> crops;
+    public void setId(Long id) {
+        this.id = id;
+    }
 
-    public Farm(String location, double area, Farmer farmer, List<Crops> crops) {
-        Location = location;
-        this.area = area;
-        this.farmer = farmer;
-        this.crops = crops;
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
     }
 
     public String getLocation() {
-        return Location;
+        return location;
     }
 
     public void setLocation(String location) {
-        Location = location;
+        this.location = location;
     }
 
-    public double getArea() {
-        return area;
+    public double getSize() {
+        return size;
     }
 
-    public void setArea(double area) {
-        this.area = area;
+    public void setSize(double size) {
+        this.size = size;
     }
 
-    public Farmer getFarmer() {
-        return farmer;
+    public String getType() {
+        return type;
     }
 
-    public void setFarmer(Farmer farmer) {
-        this.farmer = farmer;
+    public void setType(String type) {
+        this.type = type;
     }
 
-    public List<Crops> getCrops() {
-        return crops;
+    public String getOwnerEmail() {
+        return ownerEmail;
     }
 
-    public void setCrops(List<Crops> crops) {
-        this.crops = crops;
+    public void setOwnerEmail(String ownerEmail) {
+        this.ownerEmail = ownerEmail;
     }
 }
