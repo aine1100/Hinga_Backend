@@ -90,4 +90,10 @@ public class FarmController {
         boolean deleted = farmService.deleteFarm(id, username);
         return deleted ? ResponseEntity.ok().build() : ResponseEntity.status(403).build(); // Forbidden if not the owner
     }
+
+    // Example of token validation logic
+    private boolean isValidToken(String token) {
+        // Implement your token validation logic here
+        return true; // Placeholder for actual validation
+    }
 }
