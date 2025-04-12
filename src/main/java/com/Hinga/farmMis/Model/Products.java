@@ -23,9 +23,21 @@ public class Products {
     private String name;
     private String description;
     private double price;
+    @Enumerated(EnumType.STRING)
     private ProductUnits unit;
+    @Enumerated(EnumType.STRING)
     private ProductCategory category;
     private String image;
+    private String email;
+
+
+    public String getOwner_email() {
+        return email;
+    }
+
+    public void setOwner_email(String owner_email) {
+        this.email = owner_email;
+    }
 
     public String getImage() {
         return image;
@@ -81,5 +93,20 @@ public class Products {
 
     public void setCategory(ProductCategory category) {
         this.category = category;
+    }
+
+    @Override
+    public String toString() {
+        return "Products{" +
+
+                "id=" + id +
+                ",owner=" + email +
+                ", name='" + name + '\'' +
+                ", description='" + description + '\'' +
+                ", price=" + price +
+                ", unit=" + unit +
+                ", category=" + category +
+                ", image='" + image + '\'' +
+                '}';
     }
 }

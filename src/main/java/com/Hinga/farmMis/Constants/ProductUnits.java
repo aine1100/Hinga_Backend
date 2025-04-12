@@ -12,9 +12,12 @@ public enum ProductUnits {
     LITER;
 
     @JsonCreator
-    public static ProductUnits fromValue(String string) {
-        return ProductUnits.valueOf(string.toLowerCase());
-
+    public static ProductUnits fromValue(String value) {
+        try {
+            return ProductUnits.valueOf(value.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
     }
 
     @JsonValue

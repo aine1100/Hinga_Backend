@@ -1,5 +1,6 @@
 package com.Hinga.farmMis.services;
 
+import com.Hinga.farmMis.Constants.ProductCategory;
 import com.Hinga.farmMis.Dto.ProductDto;
 import com.Hinga.farmMis.Model.Products;
 import com.Hinga.farmMis.repository.ProductRepository;
@@ -43,8 +44,10 @@ public class ProductService {
         product.setPrice(productDTO.getProPrice());
         product.setUnit(productDTO.getProUnits());
         product.setCategory(productDTO.getProCategory());
+        product.setOwner_email(productDTO.getOwnerEmail());
 
         // Handle image upload
+        System.out.println(product.toString());
         String imageUrl = saveImage(imageFile);
         product.setImage(imageUrl);
 
@@ -78,6 +81,18 @@ public class ProductService {
 
     public Optional<Products> getProductById(int id) {
         return productRepository.findById(id);
+    }
+
+    public Optional<Products> getProductByName(String name) {
+        return Optional.ofNullable(productRepository.findByName(name));
+    }
+
+    public Optional<List<Products>> getProductByCategory(ProductCategory category){
+        return Optional.ofNullable(productRepository.findByCategory(category));
+    }
+
+    public Optional<List<Products>> getProductByOwner_email(String owner_email){
+        return Optional.ofNullable(productRepository.findByEmail(owner_email));
     }
 
     public Products updateProduct(int id, ProductDto productDTO) throws IOException {

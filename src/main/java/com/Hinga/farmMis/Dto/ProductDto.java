@@ -31,6 +31,8 @@ public class ProductDto {
     private ProductCategory category;
     private String imageUrl; // Field for product image
 
+    private String owner_email;
+
     public ProductUnits getProUnits() {
         return unit;
     }
@@ -73,6 +75,14 @@ public class ProductDto {
 
     public String getImageUrl() {
         return imageUrl;
+    }
+
+    public String getOwnerEmail() {
+        return owner_email;
+    }
+
+    public void setOwnerEmail(String owner_email) {
+        this.owner_email = owner_email;
     }
 
     public void setImageUrl(String imageUrl) {
