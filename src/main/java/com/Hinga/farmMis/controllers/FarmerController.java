@@ -42,4 +42,19 @@ public class FarmerController {
         String token=jwtService.generateToken(savedFarmer.getEmail());
         return ResponseEntity.ok(savedFarmer+" logged in successfully. Token: " + token);
     }
+    @GetMapping("/farmer")
+    public ResponseEntity<?> getFarmer(@RequestHeader("Authorization") String token){
+        String jwtToken = token.substring(7);
+        String username = jwtService.extractUsername(jwtToken);
+
+        if (username == null) {
+            return ResponseEntity.status(401).body(null);
+        }
+       Farmer farmer=farmerService.getFarmerByEmail(username);
+        if(farmer==null){
+            return ResponseEntity.status(401).body(null);
+        }
+        return ResponseEntity.ok(farmer);
+
+    }
 }

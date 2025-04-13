@@ -69,4 +69,12 @@ public class FarmerService {
 
         return existingFarmer;
     }
+
+    public Farmer getFarmerByEmail(String email) {
+        Optional<Farmer> farmerOptional = farmerRepository.findByEmail(email);
+        if (!farmerOptional.isPresent()) {
+            throw new IllegalStateException("Farmer with this email not found");
+        }
+        return farmerOptional.get();
+    }
 }
