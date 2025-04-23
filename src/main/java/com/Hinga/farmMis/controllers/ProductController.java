@@ -39,6 +39,9 @@ public class ProductController {
                                          @RequestParam("category") String category,
                                          @RequestParam(value = "image", required=true) MultipartFile imageFile) throws IOException {
         try {
+            if(jwtService.isTokenInvalidated(token)){
+                return  ResponseEntity.status(404).body("Invalid token");
+            }
             // Token validation logic
             if (!isValidToken(token)) {
                 return ResponseEntity.status(401).body("Invalid token");

@@ -33,7 +33,7 @@ public class SecurityConfig {
         http.csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
                         // Permit access to specific public routes
-                        .requestMatchers("/api/auth/**", "/api/auth/farmerRegister","/api/auth/farmerLogin","/api/weather").permitAll()
+                        .requestMatchers("/api/auth/**", "/api/auth/farmerRegister","/api/auth/farmerLogin","/api/weather","api/cart/**").permitAll()
                         // Protect other /api/auth/** routes with ROLE_USER
                         .requestMatchers("/api/auth/**").hasAnyAuthority("ROLE_USER")
                         // Restrict /api/auth/admin route to ROLE_ADMIN

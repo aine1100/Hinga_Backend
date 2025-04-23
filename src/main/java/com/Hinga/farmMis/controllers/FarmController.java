@@ -25,11 +25,15 @@ public class FarmController {
     @PostMapping("/create")
     public ResponseEntity<Farm> createFarm(@RequestHeader("Authorization") String token, @RequestBody Farm farm) {
         String jwtToken = token.substring(7); // Remove "Bearer " prefix
+        if(jwtService.isTokenInvalidated(jwtToken)){
+            return  ResponseEntity.status(404).body(null);
+        }
         String username = jwtService.extractUsername(jwtToken);
 
         if (username == null) {
             return ResponseEntity.status(401).body(null);
         }
+
 
         Farm savedFarm = farmService.createFarm(farm, username);
         return ResponseEntity.ok(savedFarm);
@@ -39,7 +43,11 @@ public class FarmController {
     @GetMapping("/my-farms")
     public ResponseEntity<List<Farm>> getFarmsByFarmer(@RequestHeader("Authorization") String token) {
         String jwtToken = token.substring(7);
+        if(jwtService.isTokenInvalidated(jwtToken)){
+            return  ResponseEntity.status(404).body(null);
+        }
         String username = jwtService.extractUsername(jwtToken);
+
 
         if (username == null) {
             return ResponseEntity.status(401).body(null);
@@ -53,6 +61,9 @@ public class FarmController {
     @GetMapping("/{id}")
     public ResponseEntity<Optional<Farm>> getFarmById(@PathVariable Long id, @RequestHeader("Authorization") String token) {
         String jwtToken = token.substring(7);
+        if(jwtService.isTokenInvalidated(jwtToken)){
+            return  ResponseEntity.status(404).body(null);
+        }
         String username = jwtService.extractUsername(jwtToken);
 
         if (username == null) {
@@ -67,6 +78,9 @@ public class FarmController {
     @PutMapping("/update/{id}")
     public ResponseEntity<Farm> updateFarm(@PathVariable Long id, @RequestBody Farm farm, @RequestHeader("Authorization") String token) {
         String jwtToken = token.substring(7);
+        if(jwtService.isTokenInvalidated(jwtToken)){
+            return  ResponseEntity.status(404).body(null);
+        }
         String username = jwtService.extractUsername(jwtToken);
 
         if (username == null) {
@@ -81,6 +95,9 @@ public class FarmController {
     @DeleteMapping("/delete/{id}")
     public ResponseEntity<Void> deleteFarm(@PathVariable Long id, @RequestHeader("Authorization") String token) {
         String jwtToken = token.substring(7);
+        if(jwtService.isTokenInvalidated(jwtToken)){
+            return  ResponseEntity.status(404).body(null);
+        }
         String username = jwtService.extractUsername(jwtToken);
 
         if (username == null) {

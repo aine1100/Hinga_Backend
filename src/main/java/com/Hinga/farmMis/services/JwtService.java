@@ -5,6 +5,7 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
@@ -12,14 +13,21 @@ import java.security.Key;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
+import java.util.Set;
+
 
 @Service
 public class JwtService {
 
     public JwtService(){}
 
-    private static final String SECRET = "YWJjZGVmZ2hpanN0YXYxMjM0NTY3ODkwYXNkZmdoaWpkbG91b3o="; // Base64 encoded secret key
+    @Value("${secret.key}")
+    private    String SECRET ; // Base64 encoded secret key
+
+    // Add a set to store invalidated tokens
+    private final Set<String> invalidatedTokens =ConcurrentHashMap.newKeySet();
 
     public String generateToken(String email) {
         Map<String, Object> claims = new HashMap<>();
@@ -69,5 +77,28 @@ public class JwtService {
     public Boolean validateToken(String token, UserDetails userDetails) {
         final String username = extractUsername(token);
         return (username.equals(userDetails.getUsername()) && !isTokenExpired(token));
+    }
+
+    // Add method to invalidate token
+    public void invalidateToken(String token) {
+        invalidatedTokens.add(token);
+    }
+
+    // Add method to check if token is invalidated
+    public boolean isTokenInvalidated(String token) {
+        return invalidatedTokens.contains(token);
+    }
+
+    // Modify your existing token validation to check for invalidated tokens
+    public boolean isTokenValid(String token) {
+        try {
+            if (isTokenInvalidated(token)) {
+                return false;
+            }
+            // Your existing token validation logic
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
     }
 }

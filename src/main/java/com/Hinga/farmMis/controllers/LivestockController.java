@@ -25,6 +25,9 @@ public class LivestockController {
     @PostMapping("/create/{farmId}")
     public ResponseEntity<Livestock> createLivestock(@RequestHeader("Authorization") String token,@RequestBody Livestock livestock, @PathVariable Long farmId){
         String jwtToken = token.substring(7); // Remove "Bearer " prefix
+        if(jwtService.isTokenInvalidated(jwtToken)){
+            return  ResponseEntity.status(404).body(null);
+        }
         String username = jwtService.extractUsername(jwtToken);
 
 
@@ -40,6 +43,9 @@ public class LivestockController {
 
     public ResponseEntity<Optional<List<Livestock>>> getLivestock(@PathVariable Long farmId, @RequestHeader("Authorization") String token){
         String jwtToken = token.substring(7);
+        if(jwtService.isTokenInvalidated(jwtToken)){
+            return  ResponseEntity.status(404).body(null);
+        }
         String username = jwtService.extractUsername(jwtToken);
         if (username == null) {
             return ResponseEntity.status(401).body(null);
@@ -55,6 +61,9 @@ public class LivestockController {
 
     public ResponseEntity<Livestock> getLivestockById(@PathVariable Long farmId, @PathVariable Long Id,@RequestHeader("Authorization") String token){
         String jwtToken = token.substring(7);
+        if(jwtService.isTokenInvalidated(jwtToken)){
+            return  ResponseEntity.status(404).body(null);
+        }
         String username = jwtService.extractUsername(jwtToken);
         if (username == null) {
             return ResponseEntity.status(401).body(null);
@@ -67,6 +76,9 @@ public class LivestockController {
     @PutMapping("/{farmId}/{Id}")
     public ResponseEntity<Livestock> updateLivestock(@RequestHeader("Authorization") String token,@PathVariable Long farmId,@PathVariable Long Id,@RequestBody Livestock livestock){
         String jwtToken = token.substring(7);
+        if(jwtService.isTokenInvalidated(jwtToken)){
+            return  ResponseEntity.status(404).body(null);
+        }
         String username = jwtService.extractUsername(jwtToken);
         if (username == null) {
             return ResponseEntity.status(401).body(null);
@@ -79,6 +91,9 @@ public class LivestockController {
 
     public ResponseEntity<Void> deleteLivestock(@PathVariable Long farmId,@PathVariable Long Id,@RequestHeader("Authorization") String token){
         String jwtToken = token.substring(7);
+        if(jwtService.isTokenInvalidated(jwtToken)){
+            return  ResponseEntity.status(404).body(null);
+        }
         String username = jwtService.extractUsername(jwtToken);
         if (username == null) {
             return ResponseEntity.status(401).body(null);
