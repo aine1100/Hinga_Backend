@@ -11,6 +11,13 @@ import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/farms")
+@CrossOrigin(
+        origins = "http://localhost:5173",
+        methods = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE, RequestMethod.OPTIONS},
+        allowedHeaders = {"Authorization", "Content-Type"},
+        exposedHeaders = {"Authorization"},
+        allowCredentials = "false"
+)
 public class FarmController {
 
     private final FarmService farmService;
