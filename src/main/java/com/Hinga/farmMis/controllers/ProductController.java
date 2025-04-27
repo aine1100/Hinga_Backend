@@ -30,7 +30,7 @@ public class ProductController {
 //    public String testUpload(@RequestPart String product, @RequestPart MultipartFile image) {
 //        return "Received: " + product + ", Image: " + image.getOriginalFilename();
 //    }
-    @PostMapping(consumes=MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PostMapping(consumes=MediaType.MULTIPART_FORM_DATA_VALUE, path = "/add")
     public ResponseEntity<?> addProduct(@RequestHeader("Authorization") String token,
                                          @RequestParam("name") String name,
                                          @RequestParam("description") String description,

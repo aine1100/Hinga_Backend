@@ -69,6 +69,16 @@ public class FarmerService {
 
         return existingFarmer;
     }
+    public Farmer ResetPassword(String email,String password){
+        Optional<Farmer> farmerOptional=farmerRepository.findByEmail(email);
+        if(!farmerOptional.isPresent()){
+            throw new IllegalStateException("Farmer with this email not found");
+        }
+        Farmer farmer=farmerOptional.get();
+        farmer.setPassword(passwordEncoder.encode(password));
+        farmerRepository.save(farmer);
+        return farmer;
+    }
 
     public Farmer getFarmerByEmail(String email) {
         Optional<Farmer> farmerOptional = farmerRepository.findByEmail(email);

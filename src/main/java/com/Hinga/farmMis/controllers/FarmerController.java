@@ -57,4 +57,19 @@ public class FarmerController {
         return ResponseEntity.ok(farmer);
 
     }
+    @PostMapping("/resetPassword")
+    public ResponseEntity<?> resetPassword(@RequestParam String email, @RequestParam String newPassword) {
+        try {
+            Farmer updatedFarmer = farmerService.ResetPassword(email, newPassword);
+
+            String token = jwtService.generateToken(updatedFarmer.getEmail());
+            return ResponseEntity.ok("Password reset successfully. New Token: " + token);
+
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(404).body("Farmer with given email not found.");
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body("An unexpected error occurred.");
+        }
+    }
+
 }
