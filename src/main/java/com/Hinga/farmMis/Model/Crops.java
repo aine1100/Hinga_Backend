@@ -4,9 +4,9 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDate;
-
-@Entity
-@Table(name = "crop")
+//
+//@Entity
+//@Table(name = "crop")
 @Getter
 @Setter
 @AllArgsConstructor

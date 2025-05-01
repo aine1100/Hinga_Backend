@@ -1,9 +1,9 @@
 package com.Hinga.farmMis.Model;
 
 import jakarta.persistence.*;
-
-@Entity
-@Table
+//
+//@Entity
+//@Table
 public class Equipments {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private int id;

@@ -1,12 +1,13 @@
 package com.Hinga.farmMis.Model;
 
-
 import com.Hinga.farmMis.Constants.LivestockStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+
+import java.time.LocalDate;
 
 @Getter
 @Setter
@@ -17,28 +18,33 @@ import lombok.Setter;
 public class Livestock {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private Long livestockId;
+
     private String type;
     private int count;
     private String description;
+    private String breed;
+    private LocalDate birthDate;
+    private double price;
+    private int quantity;
+    private double weight;
+
     @Enumerated(EnumType.STRING)
     private LivestockStatus status;
-    private Long farmId;
 
-    public Long getFarmId() {
-        return farmId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "farmer_id")
+    private Users farmer;
+    private String imageUrls;
+
+
+
+    public Long getLivestockId() {
+        return livestockId;
     }
 
-    public void setFarmId(Long farmId) {
-        this.farmId = farmId;
-    }
-
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
+    public void setLivestockId(Long livestockId) {
+        this.livestockId = livestockId;
     }
 
     public String getType() {
@@ -65,11 +71,67 @@ public class Livestock {
         this.description = description;
     }
 
+    public String getBreed() {
+        return breed;
+    }
+
+    public void setBreed(String breed) {
+        this.breed = breed;
+    }
+
+    public LocalDate getBirthDate() {
+        return birthDate;
+    }
+
+    public void setBirthDate(LocalDate birthDate) {
+        this.birthDate = birthDate;
+    }
+
+    public double getPrice() {
+        return price;
+    }
+
+    public void setPrice(double price) {
+        this.price = price;
+    }
+
+    public int getQuantity() {
+        return quantity;
+    }
+
+    public void setQuantity(int quantity) {
+        this.quantity = quantity;
+    }
+
+    public double getWeight() {
+        return weight;
+    }
+
+    public void setWeight(double weight) {
+        this.weight = weight;
+    }
+
     public LivestockStatus getStatus() {
         return status;
     }
 
     public void setStatus(LivestockStatus status) {
         this.status = status;
+    }
+
+    public Users getFarmer() {
+        return farmer;
+    }
+
+    public void setFarmer(Users farmer) {
+        this.farmer = farmer;
+    }
+
+    public String getImageUrls() {
+        return imageUrls;
+    }
+
+    public void setImageUrls(String imageUrls) {
+        this.imageUrls = imageUrls;
     }
 }

@@ -1,5 +1,8 @@
 package com.Hinga.farmMis.services;
 
+import com.Hinga.farmMis.Constants.UserRoles;
+import com.Hinga.farmMis.Model.Users;
+import com.Hinga.farmMis.utils.Address;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
@@ -14,30 +17,37 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Function;
 import java.util.Set;
-
+import java.util.function.Function;
 
 @Service
 public class JwtService {
 
-    public JwtService(){}
-
     @Value("${secret.key}")
-    private    String SECRET ; // Base64 encoded secret key
+    private String SECRET; // Base64 encoded secret key
 
-    // Add a set to store invalidated tokens
-    private final Set<String> invalidatedTokens =ConcurrentHashMap.newKeySet();
+    // Set to store invalidated tokens
+    private final Set<String> invalidatedTokens = ConcurrentHashMap.newKeySet();
 
-    public String generateToken(String email) {
+    public JwtService() {}
+
+    // Modified to include all user details
+    public String generateToken(Users user) {
         Map<String, Object> claims = new HashMap<>();
-        return createToken(claims, email);
+        claims.put("id", user.getId());
+        claims.put("email", user.getEmail());
+        claims.put("firstName", user.getFirstName());
+        claims.put("lastName", user.getLastName());
+        claims.put("phoneNumber", user.getPhoneNumber());
+        claims.put("address", user.getAddress());
+        claims.put("role", user.getUserRole());
+        return createToken(claims, user.getId());
     }
 
-    private String createToken(Map<String, Object> claims, String email) {
+    private String createToken(Map<String, Object> claims, Long id) {
         return Jwts.builder()
                 .setClaims(claims)
-                .setSubject(email)
+                .setSubject(id.toString()) // ID as the subject
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + 1000 * 60 * 30)) // 30 minutes expiration
                 .signWith(getSignKey(), SignatureAlgorithm.HS256)
@@ -49,8 +59,33 @@ public class JwtService {
         return Keys.hmacShaKeyFor(keyBytes);
     }
 
-    public String extractUsername(String token) {
-        return extractClaim(token, Claims::getSubject);
+    // Extract specific claims
+    public long extractId(String token) {
+        return Long.parseLong(extractClaim(token, Claims::getSubject));
+    }
+
+    public String extractEmail(String token) {
+        return extractClaim(token, claims -> claims.get("email", String.class));
+    }
+
+    public String extractFirstName(String token) {
+        return extractClaim(token, claims -> claims.get("firstName", String.class));
+    }
+
+    public String extractLastName(String token) {
+        return extractClaim(token, claims -> claims.get("lastName", String.class));
+    }
+
+    public String extractPhoneNumber(String token) {
+        return extractClaim(token, claims -> claims.get("phoneNumber", String.class));
+    }
+
+    public Address extractAddress(String token) {
+        return extractClaim(token, claims -> claims.get("address", Address.class));
+    }
+
+    public UserRoles extractRole(String token) {
+        return extractClaim(token, claims -> claims.get("role", UserRoles.class));
     }
 
     public Date extractExpiration(String token) {
@@ -75,28 +110,27 @@ public class JwtService {
     }
 
     public Boolean validateToken(String token, UserDetails userDetails) {
-        final String username = extractUsername(token);
-        return (username.equals(userDetails.getUsername()) && !isTokenExpired(token));
+        final String id = String.valueOf(extractId(token)); // ID as username
+        return (id.equals(userDetails.getUsername()) && !isTokenExpired(token) && !isTokenInvalidated(token));
     }
 
-    // Add method to invalidate token
+    // Invalidate token
     public void invalidateToken(String token) {
         invalidatedTokens.add(token);
     }
 
-    // Add method to check if token is invalidated
+    // Check if token is invalidated
     public boolean isTokenInvalidated(String token) {
         return invalidatedTokens.contains(token);
     }
 
-    // Modify your existing token validation to check for invalidated tokens
+    // Validate token including invalidation check
     public boolean isTokenValid(String token) {
         try {
             if (isTokenInvalidated(token)) {
                 return false;
             }
-            // Your existing token validation logic
-            return true;
+            return !isTokenExpired(token);
         } catch (Exception e) {
             return false;
         }

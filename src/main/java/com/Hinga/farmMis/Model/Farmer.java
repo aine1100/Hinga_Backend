@@ -2,13 +2,13 @@ package com.Hinga.farmMis.Model;
 
 import jakarta.persistence.*;
 import lombok.*;
-
-@Entity
-@Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
-@Table(name = "farmers")
+//
+//@Entity
+//@Getter
+//@Setter
+//@NoArgsConstructor
+//@AllArgsConstructor
+//@Table(name = "farmers")
 public class Farmer {
 
     @Id

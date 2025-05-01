@@ -14,10 +14,12 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.logging.Logger;
 
 @Component
 public class JwtAuthFilter extends OncePerRequestFilter {
 
+    private static final Logger logger = Logger.getLogger(JwtAuthFilter.class.getName());
     private final UserDetailsService userDetailsService;
     private final JwtService jwtService;
 
@@ -30,23 +32,27 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
         String authHeader = request.getHeader("Authorization");
         String token = null;
-        String username = null;
+        String userId = null;
+        String email = null;
 
-        if (authHeader != null && authHeader.startsWith("Bearer")) {
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
             token = authHeader.substring(7);
             try {
-                username = jwtService.extractUsername(token);
+                userId = String.valueOf(jwtService.extractId(token)); // Extract ID (subject)
+                email = jwtService.extractEmail(token); // Extract email
             } catch (Exception e) {
-                logger.warn("Invalid JWT Token");
+                logger.warning("Invalid JWT Token: " + e.getMessage());
             }
         }
 
-        if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+        if (userId != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+            UserDetails userDetails = userDetailsService.loadUserByUsername(userId);
             if (jwtService.validateToken(token, userDetails)) {
                 UsernamePasswordAuthenticationToken authToken =
                         new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
                 authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                request.setAttribute("userId", userId); // Store userId in request attributes
+                request.setAttribute("email", email); // Store email in request attributes
                 SecurityContextHolder.getContext().setAuthentication(authToken);
             }
         }
