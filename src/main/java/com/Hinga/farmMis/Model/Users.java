@@ -2,11 +2,13 @@ package com.Hinga.farmMis.Model;
 
 import com.Hinga.farmMis.Constants.UserRoles;
 import com.Hinga.farmMis.utils.Address;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.NoArgsConstructor;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Entity
@@ -14,7 +16,7 @@ import java.util.List;
 @AllArgsConstructor
 public class Users {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private long id;
+    private Long id;
     private String firstName;
     private String lastName;
     private String phoneNumber;
@@ -27,6 +29,8 @@ public class Users {
     private String resetPasswordToken;
     @OneToMany(mappedBy = "farmer", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Livestock> livestock;
+    @OneToMany(mappedBy = "buyer", fetch = FetchType.LAZY)
+    private List<Cart> carts = new ArrayList<>();
 
     public String getResetPasswordToken() {
         return resetPasswordToken;
@@ -36,7 +40,7 @@ public class Users {
         this.resetPasswordToken = resetPasswordToken;
     }
 
-    public @NotNull(message = "Farmer ID is required") long getId() {
+    public  Long getId() {
         return id;
     }
 
@@ -102,5 +106,13 @@ public class Users {
 
     public void setLivestock(List<Livestock> livestock) {
         this.livestock = livestock;
+    }
+
+    public List<Cart> getCarts() {
+        return carts;
+    }
+
+    public void setCarts(List<Cart> carts) {
+        this.carts = carts;
     }
 }

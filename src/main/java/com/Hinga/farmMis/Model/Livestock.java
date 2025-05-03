@@ -1,6 +1,7 @@
 package com.Hinga.farmMis.Model;
 
 import com.Hinga.farmMis.Constants.LivestockStatus;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -8,6 +9,8 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 
 @Getter
 @Setter
@@ -36,6 +39,8 @@ public class Livestock {
     @JoinColumn(name = "farmer_id")
     private Users farmer;
     private String imageUrls;
+    @OneToMany(mappedBy = "livestock", fetch = FetchType.LAZY)
+    private List<Cart> carts = new ArrayList<>();
 
 
 
@@ -133,5 +138,13 @@ public class Livestock {
 
     public void setImageUrls(String imageUrls) {
         this.imageUrls = imageUrls;
+    }
+
+    public List<Cart> getCarts() {
+        return carts;
+    }
+
+    public void setCarts(List<Cart> carts) {
+        this.carts = carts;
     }
 }

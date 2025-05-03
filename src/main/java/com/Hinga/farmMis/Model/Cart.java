@@ -2,93 +2,101 @@ package com.Hinga.farmMis.Model;
 
 import com.Hinga.farmMis.Constants.ProductCategory;
 import com.Hinga.farmMis.Constants.ProductUnits;
+import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-//
-//@Entity
-//@Getter
-//@Setter
-//@Table( name = "cart")
+
+import java.util.ArrayList;
+import java.util.List;
+
+@Entity
+@Getter
+@Setter
+@Table( name = "cart")
 @NoArgsConstructor
 @AllArgsConstructor
 
 public class Cart {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private int id;
-    private String productName;
-    private int quantity;
-    private double price;
-    @Enumerated(EnumType.STRING)
-    private ProductCategory productCategory;
-    @Enumerated(EnumType.STRING)
-    private ProductUnits productUnits;
-    private String owner_email;
-    private String description;
+    private Long id;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "livestock_id")
+    @JsonBackReference(value = "livestock")
+    private Livestock livestock;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name="buyer_id")
+    @JsonBackReference(value = "buyer")
+    private Users buyer;
+    private Long quantity;
+    private Long unitPrice;
+    private Long totalPrice;
+    @OneToMany(mappedBy = "cart", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
 
-    public int getId() {
+    private List<Orders> orders = new ArrayList<>();
+
+    public void calculateTotalPrice() {
+        if (unitPrice != null && quantity != null) {
+            this.totalPrice = unitPrice * quantity;
+        }
+    }
+
+    public Long getId() {
         return id;
     }
 
-    public void setId(int id) {
+    public void setId(Long id) {
         this.id = id;
     }
 
-    public String getProductName() {
-        return productName;
+    public Livestock getLivestock() {
+        return livestock;
     }
 
-    public void setProductName(String productName) {
-        this.productName = productName;
+    public void setLivestock(Livestock livestock) {
+        this.livestock = livestock;
     }
 
-    public int getQuantity() {
+    public Users getBuyer() {
+        return buyer;
+    }
+
+    public void setBuyer(Users buyer) {
+        this.buyer = buyer;
+    }
+
+    public Long getQuantity() {
         return quantity;
     }
 
-    public void setQuantity(int quantity) {
+    public void setQuantity(Long quantity) {
         this.quantity = quantity;
     }
 
-    public double getPrice() {
-        return price;
+    public Long getUnitPrice() {
+        return unitPrice;
     }
 
-    public void setPrice(double price) {
-        this.price = price;
+    public void setUnitPrice(Long unitPrice) {
+        this.unitPrice = unitPrice;
     }
 
-    public ProductCategory getProductCategory() {
-        return productCategory;
+    public Long getTotalPrice() {
+        return totalPrice;
     }
 
-    public void setProductCategory(ProductCategory productCategory) {
-        this.productCategory = productCategory;
+    public void setTotalPrice(Long totalPrice) {
+        this.totalPrice = totalPrice;
     }
 
-    public ProductUnits getProductUnits() {
-        return productUnits;
+    public List<Orders> getOrders() {
+        return orders;
     }
 
-    public void setProductUnits(ProductUnits productUnits) {
-        this.productUnits = productUnits;
-    }
-
-    public String getOwner_email() {
-        return owner_email;
-    }
-
-    public void setOwner_email(String owner_email) {
-        this.owner_email = owner_email;
-    }
-
-    public String getDescription() {
-        return description;
-    }
-
-    public void setDescription(String description) {
-        this.description = description;
+    public void setOrders(List<Orders> orders) {
+        this.orders = orders;
     }
 }

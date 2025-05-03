@@ -1,26 +1,72 @@
 package com.Hinga.farmMis.Model;
 
-import com.Hinga.farmMis.utils.Payments;
+import com.Hinga.farmMis.Constants.OrderStatus;
+import com.Hinga.farmMis.utils.Address;
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
-//
-//@Entity
-//@NoArgsConstructor
-//@AllArgsConstructor
+
+@Entity
 public class Orders {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long Oid;
-    @ManyToOne
-    private Products products;
-    private int quantity;
-    private double price;
-    @Embedded
-    private Payments payments;
+    @Id @GeneratedValue(strategy = GenerationType.AUTO)
+    private Long id;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "cart_id",nullable = false)
+
+    private Cart cart;
     private LocalDate orderDate;
+    private LocalDate deliveryDate;
+    @Embedded
+    private Address deliveryAddress;
+    @Enumerated(EnumType.STRING)
+    private OrderStatus orderStatus;
 
+    public Long getId() {
+        return id;
+    }
 
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public Cart getCart() {
+        return cart;
+    }
+
+    public void setCart(Cart cart) {
+        this.cart = cart;
+    }
+
+    public LocalDate getOrderDate() {
+        return orderDate;
+    }
+
+    public void setOrderDate(LocalDate orderDate) {
+        this.orderDate = orderDate;
+    }
+
+    public LocalDate getDeliveryDate() {
+        return deliveryDate;
+    }
+
+    public void setDeliveryDate(LocalDate deliveryDate) {
+        this.deliveryDate = deliveryDate;
+    }
+
+    public Address getDeliveryAddress() {
+        return deliveryAddress;
+    }
+
+    public void setDeliveryAddress(Address deliveryAddress) {
+        this.deliveryAddress = deliveryAddress;
+    }
+
+    public OrderStatus getOrderStatus() {
+        return orderStatus;
+    }
+
+    public void setOrderStatus(OrderStatus orderStatus) {
+        this.orderStatus = orderStatus;
+    }
 }
