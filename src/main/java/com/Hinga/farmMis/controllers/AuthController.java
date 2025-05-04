@@ -50,11 +50,17 @@ public class AuthController {
             Users user1 = new Users();
             user1.setPassword(user.getPassword());
             user1.setEmail(user.getEmail());
+            System.out.println(user.getRole());
+
+
 
             Users savedUser = authService.userLogin(user1);
 
             if (savedUser == null) {
                 return ResponseEntity.status(400).body("Invalid email or password");
+            }
+            if(!user.getRole().equals(savedUser.getUserRole())){
+                return ResponseEntity.status(400).body("User role does not match");
             }
 
             String token = jwtService.generateToken(savedUser);

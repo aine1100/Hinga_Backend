@@ -1,6 +1,5 @@
 package com.Hinga.farmMis.services.farmer;
 
-
 import com.Hinga.farmMis.Model.Livestock;
 import com.Hinga.farmMis.repository.LivestockRepository;
 import com.Hinga.farmMis.repository.UserRepository;
@@ -22,14 +21,11 @@ public class LivestockService {
     private final LivestockRepository livestockRepository;
     private final UserRepository userRepository;
     @Value("${file.upload-dir}")
-    private  String uploadDir;
+    private String uploadDir;
 
-
-
-    public LivestockService(com.Hinga.farmMis.repository.LivestockRepository livestockRepository,UserRepository userRepository) {
+    public LivestockService(LivestockRepository livestockRepository, UserRepository userRepository) {
         this.livestockRepository = livestockRepository;
-        this.userRepository=userRepository;
-
+        this.userRepository = userRepository;
     }
 
     public Livestock addLivestock(Livestock livestock, MultipartFile imageFile) throws IOException {
@@ -38,12 +34,8 @@ public class LivestockService {
             throw new IllegalArgumentException("Image file is required");
         }
 
-        // Create product entity
-
         // Handle image upload
-        System.out.println(livestock.toString());
-
-        String imageUrl=saveImage(imageFile);
+        String imageUrl = saveImage(imageFile);
         livestock.setImageUrls(imageUrl);
 
         return livestockRepository.save(livestock);
@@ -71,103 +63,100 @@ public class LivestockService {
     }
 
     public List<Livestock> getAllLiveStocks(Long userId) {
-        if(userId == null) {
+        if (userId == null) {
             throw new IllegalArgumentException("userId is required");
         }
-        if(userRepository.findById(userId)==null){
-            throw  new IllegalArgumentException("User not found");
-
+        if (userRepository.findById(userId) == null) {
+            throw new IllegalArgumentException("User not found");
         }
-        if(livestockRepository.findByFarmerId(userId).isEmpty()){
-            throw new IllegalArgumentException("user with this id does not have any livestock");
+        if (livestockRepository.findByFarmerId(userId).isEmpty()) {
+            throw new IllegalArgumentException("User with this id does not have any livestock");
         }
         return livestockRepository.findByFarmerId(userId);
     }
 
-    public Optional<Livestock> getLiveStockById(Long id,Long userId) {
-        if(userId == null || id == null) {
+    public List<Livestock> getAllLivestockForBuyers() {
+        return livestockRepository.findAll();
+    }
+
+    public Optional<Livestock> getLiveStockById(Long id, Long userId) {
+        if (userId == null || id == null) {
             throw new IllegalArgumentException("userId or id is required");
         }
-        if(userRepository.findById(userId)==null){
-            throw  new IllegalArgumentException("User not found");
+        if (userRepository.findById(userId) == null) {
+            throw new IllegalArgumentException("User not found");
         }
-        if(livestockRepository.findByFarmerId(userId).isEmpty()){
-            throw new IllegalArgumentException("user with this id does not have any livestock");
+        if (livestockRepository.findByFarmerId(userId).isEmpty()) {
+            throw new IllegalArgumentException("User with this id does not have any livestock");
         }
         return livestockRepository.findById(id);
     }
 
-    public Optional<Livestock> getLiveStockByName(String name,Long userId) {
-        if(userId == null || name == null) {
+    public Optional<Livestock> getLiveStockByName(String name, Long userId) {
+        if (userId == null || name == null) {
             throw new IllegalArgumentException("userId or name is required");
         }
-        if(userRepository.findById(userId)==null){
-            throw  new IllegalArgumentException("User not found");
+        if (userRepository.findById(userId) == null) {
+            throw new IllegalArgumentException("User not found");
         }
-        if(livestockRepository.findByFarmerId(userId).isEmpty()){
-            throw new IllegalArgumentException("user with this id does not have any livestock");
+        if (livestockRepository.findByFarmerId(userId).isEmpty()) {
+            throw new IllegalArgumentException("User with this id does not have any livestock");
         }
         return Optional.ofNullable(livestockRepository.findByType(name));
     }
 
-
-
-
-    public Livestock updateLiveStock(Long userId,Long id, Livestock livestock) throws IOException {
-        if(userRepository.findById(userId)==null){
-            throw  new IllegalArgumentException("User not found");
+    public Livestock updateLiveStock(Long userId, Long id, Livestock livestock) throws IOException {
+        if (userRepository.findById(userId) == null) {
+            throw new IllegalArgumentException("User not found");
         }
-
-        if(livestockRepository.findByFarmerId(userId).isEmpty()){
-            throw new IllegalArgumentException("user with this id does not have any livestock");
+        if (livestockRepository.findByFarmerId(userId).isEmpty()) {
+            throw new IllegalArgumentException("User with this id does not have any livestock");
         }
-
-        if(livestockRepository.findById(id).isEmpty()){
-            throw  new IllegalArgumentException("Livestock not found");
+        if (livestockRepository.findById(id).isEmpty()) {
+            throw new IllegalArgumentException("Livestock not found");
         }
-        Livestock livestock1=livestockRepository.findById(id).get();
+        Livestock existingLivestock = livestockRepository.findById(id).get();
 
-        livestock1.setLivestockId(id);
-        livestock1.setBreed(livestock.getBreed());
-        livestock1.setPrice(livestock.getPrice());
-        livestock1.setQuantity(livestock.getQuantity());
-        livestock1.setBirthDate(livestock.getBirthDate());
-        livestock1.setStatus(livestock.getStatus());
-        livestock1.setDescription(livestock.getDescription());
-        livestock1.setCount(livestock.getCount());
-        livestock1.setType(livestock.getType());
+        // Update fields if provided
+        if (livestock.getType() != null) existingLivestock.setType(livestock.getType());
+        if (livestock.getBreed() != null) existingLivestock.setBreed(livestock.getBreed());
+        if (livestock.getCount() != 0) existingLivestock.setCount(livestock.getCount());
+        if (livestock.getDescription() != null) existingLivestock.setDescription(livestock.getDescription());
+        if (livestock.getWeight() != 0.0) existingLivestock.setWeight(livestock.getWeight());
+        if (livestock.getPrice() != 0.0) existingLivestock.setPrice(livestock.getPrice());
+        if (livestock.getQuantity() != 0) existingLivestock.setQuantity(livestock.getQuantity());
+        if (livestock.getStatus() != null) existingLivestock.setStatus(livestock.getStatus());
+        if (livestock.getBirthDate() != null) existingLivestock.setBirthDate(livestock.getBirthDate());
 
-        // Update fields
-
-        // Update image if new one is provided
-//        if (product.getImage() != null && !product.getImage().isEmpty()) {
-//            // Delete old image
-//            deleteImage(product.getImage());
-//            // Save new image
-//            String newImageUrl = saveImage(product.getImage());
-//            product.setImage(newImageUrl);
-//        }
-
-        return livestockRepository.save(livestock1);
+        return livestockRepository.save(existingLivestock);
     }
 
-    public boolean deleteLivestock(Long id, Long userId) throws IOException {
-        if(userRepository.findById(userId)==null){
-            throw  new IllegalArgumentException("User not found");
+    public Livestock updateLiveStock(Long userId, Long id, Livestock livestock, MultipartFile imageFile) throws IOException {
+        Livestock updatedLivestock = updateLiveStock(userId, id, livestock);
+        if (imageFile != null && !imageFile.isEmpty()) {
+            // Delete old image
+            deleteImage(updatedLivestock.getImageUrls());
+            // Save new image
+            String newImageUrl = saveImage(imageFile);
+            updatedLivestock.setImageUrls(newImageUrl);
+            return livestockRepository.save(updatedLivestock);
         }
+        return updatedLivestock;
+    }
 
-        if(livestockRepository.findByFarmerId(userId).isEmpty()){
-            throw new IllegalArgumentException("user with this id does not have any livestock");
+    public void deleteLivestock(Long id, Long userId) throws IOException {
+        if (userRepository.findById(userId) == null) {
+            throw new IllegalArgumentException("User not found");
         }
-
-        if(livestockRepository.findById(id).isEmpty()){
-            throw  new IllegalArgumentException("Livestock not found");
+        if (livestockRepository.findByFarmerId(userId).isEmpty()) {
+            throw new IllegalArgumentException("User with this id does not have any livestock");
         }
-        Livestock livestock=livestockRepository.findById(id).get();
+        if (livestockRepository.findById(id).isEmpty()) {
+            throw new IllegalArgumentException("Livestock not found");
+        }
+        Livestock livestock = livestockRepository.findById(id).get();
         deleteImage(livestock.getImageUrls());
-
         livestockRepository.deleteById(id);
-        return false;
     }
 
     private void deleteImage(String imageUrl) throws IOException {

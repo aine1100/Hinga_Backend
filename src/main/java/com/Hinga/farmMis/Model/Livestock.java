@@ -1,6 +1,7 @@
 package com.Hinga.farmMis.Model;
 
 import com.Hinga.farmMis.Constants.LivestockStatus;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -37,9 +38,12 @@ public class Livestock {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "farmer_id")
+    @JsonIgnore
     private Users farmer;
     private String imageUrls;
+
     @OneToMany(mappedBy = "livestock", fetch = FetchType.LAZY)
+    @JsonIgnore
     private List<Cart> carts = new ArrayList<>();
 
 

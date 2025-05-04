@@ -81,6 +81,8 @@ public class AuthService {
             throw new IllegalStateException("Invalid password");
         }
 
+
+
         return existingUser;
     }
 

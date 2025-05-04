@@ -3,6 +3,7 @@ package com.Hinga.farmMis.Model;
 import com.Hinga.farmMis.Constants.OrderStatus;
 import com.Hinga.farmMis.utils.Address;
 import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 
 import java.time.LocalDate;
@@ -12,6 +13,7 @@ public class Orders {
     @Id @GeneratedValue(strategy = GenerationType.AUTO)
     private Long id;
     @ManyToOne(fetch = FetchType.LAZY)
+    @JsonIgnore
     @JoinColumn(name = "cart_id",nullable = false)
 
     private Cart cart;

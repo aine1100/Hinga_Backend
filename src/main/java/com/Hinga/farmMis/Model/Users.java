@@ -2,6 +2,7 @@ package com.Hinga.farmMis.Model;
 
 import com.Hinga.farmMis.Constants.UserRoles;
 import com.Hinga.farmMis.utils.Address;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
@@ -28,8 +29,10 @@ public class Users {
     private UserRoles userRole;
     private String resetPasswordToken;
     @OneToMany(mappedBy = "farmer", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonIgnore
     private List<Livestock> livestock;
     @OneToMany(mappedBy = "buyer", fetch = FetchType.LAZY)
+    @JsonIgnore
     private List<Cart> carts = new ArrayList<>();
 
     public String getResetPasswordToken() {

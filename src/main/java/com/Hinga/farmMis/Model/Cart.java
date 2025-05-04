@@ -3,6 +3,7 @@ package com.Hinga.farmMis.Model;
 import com.Hinga.farmMis.Constants.ProductCategory;
 import com.Hinga.farmMis.Constants.ProductUnits;
 import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -30,11 +31,13 @@ public class Cart {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name="buyer_id")
     @JsonBackReference(value = "buyer")
+    @JsonIgnore
     private Users buyer;
     private Long quantity;
     private Long unitPrice;
     private Long totalPrice;
     @OneToMany(mappedBy = "cart", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonIgnore
 
     private List<Orders> orders = new ArrayList<>();
 
