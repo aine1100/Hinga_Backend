@@ -12,7 +12,7 @@ import java.time.LocalDate;
 public class Orders {
     @Id @GeneratedValue(strategy = GenerationType.AUTO)
     private Long id;
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JsonIgnore
     @JoinColumn(name = "cart_id",nullable = false)
 
@@ -70,5 +70,17 @@ public class Orders {
 
     public void setOrderStatus(OrderStatus orderStatus) {
         this.orderStatus = orderStatus;
+    }
+
+    @Override
+    public String toString() {
+        return "Orders{" +
+                "id=" + id +
+                ", cart=" + cart +
+                ", orderDate=" + orderDate +
+                ", deliveryDate=" + deliveryDate +
+                ", deliveryAddress=" + deliveryAddress +
+                ", orderStatus=" + orderStatus +
+                '}';
     }
 }

@@ -1,5 +1,6 @@
 package com.Hinga.farmMis.controllers;
 
+import com.Hinga.farmMis.Constants.UserRoles;
 import com.Hinga.farmMis.Dto.Request.RegisterDto;
 import com.Hinga.farmMis.Dto.Request.ResetPassword;
 import com.Hinga.farmMis.Model.Users;
@@ -8,6 +9,9 @@ import com.Hinga.farmMis.services.JwtService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.HashMap;
+import java.util.Map;
 
 @RestController
 @RequestMapping("api/auth/v2")
@@ -50,21 +54,22 @@ public class AuthController {
             Users user1 = new Users();
             user1.setPassword(user.getPassword());
             user1.setEmail(user.getEmail());
-            System.out.println(user.getRole());
-
-
 
             Users savedUser = authService.userLogin(user1);
 
             if (savedUser == null) {
                 return ResponseEntity.status(400).body("Invalid email or password");
             }
-            if(!user.getRole().equals(savedUser.getUserRole())){
-                return ResponseEntity.status(400).body("User role does not match");
-            }
+            UserRoles roles = savedUser.getUserRole();
 
             String token = jwtService.generateToken(savedUser);
-            return ResponseEntity.ok(savedUser.getFirstName() + " logged in successfully. Token: " + token);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("message", savedUser.getFirstName() + " logged in successfully.");
+            response.put("token", token);
+            response.put("role", roles);
+
+            return ResponseEntity.ok(response);
         } catch (Exception e) {
             return ResponseEntity.status(400).body("An error occurred while logging in the user: " + e.getMessage());
         }
@@ -82,6 +87,7 @@ public class AuthController {
 
     // ✅ Step 1: Send Reset Password Email
     @PostMapping("/reset-password/request")
+
     public ResponseEntity<?> requestResetPassword(@RequestBody ResetPassword email) {
         try {
             authService.sendPasswordResetEmail(email.getEmail());

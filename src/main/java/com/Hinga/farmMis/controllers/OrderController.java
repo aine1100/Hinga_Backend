@@ -28,6 +28,9 @@ public class OrderController {
             @RequestBody Orders request) {
         try {
             Long userId = extractUserId(token);
+            System.out.println(request.toString());
+            System.out.println(request.toString());
+
 
             // Validate cartId
             if (request.getCart() == null || request.getCart().getId() == 0) {

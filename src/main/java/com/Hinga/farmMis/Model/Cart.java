@@ -4,6 +4,7 @@ import com.Hinga.farmMis.Constants.ProductCategory;
 import com.Hinga.farmMis.Constants.ProductUnits;
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -24,13 +25,13 @@ import java.util.List;
 public class Cart {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "livestock_id")
-    @JsonBackReference(value = "livestock")
+    @JsonIgnoreProperties({"carts","farmer"})
     private Livestock livestock;
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name="buyer_id")
-    @JsonBackReference(value = "buyer")
+    @JsonIgnoreProperties({"carts","livestock"})
     @JsonIgnore
     private Users buyer;
     private Long quantity;

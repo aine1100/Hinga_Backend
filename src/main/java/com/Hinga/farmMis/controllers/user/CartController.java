@@ -74,22 +74,20 @@ public class CartController {
         }
     }
 
-    @PutMapping("/{id}")
+    @PutMapping("/{cartId}")
     public ResponseEntity<?> updateCart(@RequestHeader("Authorization") String token,
-                                        @PathVariable("id") Long id,
+                                        @PathVariable("cartId") Long cartId,
                                         @RequestBody Cart cartDto) {
         try {
             Long userId = extractUserId(token);
-            Cart updatedCart = cartService.updateCartItem(id, userId);
-            if (updatedCart == null) {
-                return new ResponseEntity<>("Cart not found or access denied", HttpStatus.NOT_FOUND);
-            }
+            // Ensure the cart belongs to the user
+            Cart cart = cartService.getCartById(userId, cartId);
+            Cart updatedCart = cartService.updateCartItem(cartId, cartDto.getQuantity());
             return new ResponseEntity<>(updatedCart, HttpStatus.OK);
         } catch (Exception e) {
             return new ResponseEntity<>("Unauthorized: " + e.getMessage(), HttpStatus.UNAUTHORIZED);
         }
     }
-
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteCart(@RequestHeader("Authorization") String token,
                                         @PathVariable("id") Long id) {

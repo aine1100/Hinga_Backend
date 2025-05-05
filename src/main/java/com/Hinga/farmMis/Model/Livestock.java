@@ -36,7 +36,7 @@ public class Livestock {
     @Enumerated(EnumType.STRING)
     private LivestockStatus status;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "farmer_id")
     @JsonIgnore
     private Users farmer;

@@ -9,6 +9,7 @@ import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -31,9 +32,20 @@ public class Users {
     @OneToMany(mappedBy = "farmer", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonIgnore
     private List<Livestock> livestock;
-    @OneToMany(mappedBy = "buyer", fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "buyer", fetch = FetchType.EAGER)
     @JsonIgnore
     private List<Cart> carts = new ArrayList<>();
+
+    public LocalDateTime getResetPasswordTokenCreatedAt() {
+        return resetPasswordTokenCreatedAt;
+    }
+
+    public void setResetPasswordTokenCreatedAt(LocalDateTime resetPasswordTokenCreatedAt) {
+        this.resetPasswordTokenCreatedAt = resetPasswordTokenCreatedAt;
+    }
+
+    @Column
+    private LocalDateTime resetPasswordTokenCreatedAt;
 
     public String getResetPasswordToken() {
         return resetPasswordToken;

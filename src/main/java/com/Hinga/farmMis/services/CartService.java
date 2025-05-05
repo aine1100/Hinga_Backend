@@ -98,7 +98,6 @@ public class CartService {
         cart.setTotalPrice(newQuantity * cart.getUnitPrice());
         return cartRepository.save(cart);
     }
-
     // ✅ Get cart by ID
     public Cart getCartById(Long userId, Long cartId) {
         Users user = userRepository.findById(userId);
@@ -123,7 +122,7 @@ public class CartService {
             throw new IllegalArgumentException("Cart item not found");
         }
         cartRepository.deleteById(cartId);
-        return false;
+        return true;
     }
 
     // ✅ Clear the entire cart for a user

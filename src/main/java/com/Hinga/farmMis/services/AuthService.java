@@ -8,10 +8,13 @@ import com.Hinga.farmMis.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -94,6 +97,7 @@ public class AuthService {
         }
         return usersOptional.get();
     }
+
     public void sendPasswordResetEmail(String email) {
         String trimmedEmail = email != null ? email.trim() : null;
         if (!isValidEmail(trimmedEmail)) {
@@ -106,11 +110,12 @@ public class AuthService {
         }
 
         String token = UUID.randomUUID().toString();
-        Users users=user.get();
+        Users users = user.get();
         users.setResetPasswordToken(token);
+        users.setResetPasswordTokenCreatedAt(LocalDateTime.now()); // Set the timestamp
         userRepository.save(users);
 
-        String resetUrl = "http://localhost:8080/api/v2/reset-password/confirm?token=" + token;
+        String resetUrl = "http://localhost:5173/reset-password/confirm?token=" + token;
 
         SimpleMailMessage message = new SimpleMailMessage();
         message.setTo(trimmedEmail);
@@ -125,9 +130,14 @@ public class AuthService {
         if (user == null) {
             throw new IllegalArgumentException("Invalid or expired reset token");
         }
-
+        // Check if token is expired (e.g., 1 hour)
+        LocalDateTime createdAt = user.getResetPasswordTokenCreatedAt();
+        if (createdAt == null || Duration.between(createdAt, LocalDateTime.now()).toHours() >= 1) {
+            throw new IllegalArgumentException("Reset token has expired");
+        }
         user.setPassword(passwordEncoder.encode(newPassword));
         user.setResetPasswordToken(null); // Invalidate token
+        user.setResetPasswordTokenCreatedAt(null); // Clear timestamp
         userRepository.save(user);
     }
 }
