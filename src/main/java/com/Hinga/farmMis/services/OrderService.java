@@ -1,52 +1,80 @@
 package com.Hinga.farmMis.services;
 
 import com.Hinga.farmMis.Constants.OrderStatus;
+import com.Hinga.farmMis.Constants.PaymentStatus;
+import com.Hinga.farmMis.Dto.response.FarmerOrderSummary;
+import com.Hinga.farmMis.Dto.response.OrderResponse;
 import com.Hinga.farmMis.Model.Orders;
 import com.Hinga.farmMis.Model.Users;
 import com.Hinga.farmMis.Model.Cart;
+import com.Hinga.farmMis.repository.LivestockRepository;
 import com.Hinga.farmMis.repository.OrderRepository;
 import com.Hinga.farmMis.repository.CartRepository;
 import com.Hinga.farmMis.repository.UserRepository;
+import com.Hinga.farmMis.Dto.Request.MultiCartOrderRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.Map;
+import java.util.HashMap;
 
 @Service
 public class OrderService {
+    private static final Logger logger = LoggerFactory.getLogger(OrderService.class);
 
     private final OrderRepository orderRepository;
     private final CartRepository cartRepository;
     private final UserRepository userRepository;
+    private final LivestockRepository livestockRepository;
+    private final CartService cartService;
 
-    public OrderService(OrderRepository orderRepository, CartRepository cartRepository, UserRepository userRepository) {
+    public OrderService(OrderRepository orderRepository, CartRepository cartRepository, 
+                       UserRepository userRepository, LivestockRepository livestockRepository,
+                       CartService cartService) {
         this.orderRepository = orderRepository;
         this.cartRepository = cartRepository;
         this.userRepository = userRepository;
+        this.livestockRepository = livestockRepository;
+        this.cartService = cartService;
     }
 
-    // Create an order from a cart
-    public Orders createOrderFromCart(Orders orders) {
+    // Create an order from a single cart
+    @Transactional
+    public OrderResponse createOrderFromCart(Orders orders) {
         // Validate the input Orders object
         if (orders == null) {
             throw new IllegalArgumentException("Order cannot be null");
         }
-        if (orders.getCart() == null || orders.getCart().getId() == 0) {
+        // Use the first cart in the carts list for backward compatibility
+        if (orders.getCarts() == null || orders.getCarts().isEmpty() || orders.getCarts().get(0) == null || orders.getCarts().get(0).getId() == null) {
             throw new IllegalArgumentException("Cart ID is required");
         }
         if (orders.getDeliveryAddress() == null ||
                 orders.getDeliveryAddress().getProvince() == null || orders.getDeliveryAddress().getProvince().trim().isEmpty() ||
                 orders.getDeliveryAddress().getDistrict() == null || orders.getDeliveryAddress().getDistrict().trim().isEmpty() ||
                 orders.getDeliveryAddress().getSector() == null || orders.getDeliveryAddress().getSector().trim().isEmpty() ||
-                orders.getDeliveryAddress().getCell() == null || orders.getDeliveryAddress().getCell().trim().isEmpty()
-        || orders.getDeliveryAddress().getVillage() == null || orders.getDeliveryAddress().getVillage().trim().isEmpty()
-        ) {
+                orders.getDeliveryAddress().getCell() == null || orders.getDeliveryAddress().getCell().trim().isEmpty() ||
+                orders.getDeliveryAddress().getVillage() == null || orders.getDeliveryAddress().getVillage().trim().isEmpty()) {
             throw new IllegalArgumentException("All delivery address fields are required");
         }
 
-        // Fetch the cart
-        Cart cart = cartRepository.findById(orders.getCart().getId())
-                .orElseThrow(() -> new IllegalArgumentException("Cart not found with ID: " + orders.getCart().getId()));
+        // Fetch the cart with livestock and farmer
+        Cart cart = cartRepository.findById(orders.getCarts().get(0).getId())
+                .orElseThrow(() -> new IllegalArgumentException("Cart not found with ID: " + orders.getCarts().get(0).getId()));
+
+        // Validate relationships
+        if (cart.getLivestock() == null) {
+            throw new IllegalArgumentException("Cart ID " + cart.getId() + " has no associated livestock");
+        }
+        if (cart.getLivestock().getFarmer() == null) {
+            throw new IllegalArgumentException("Livestock ID " + cart.getLivestock().getLivestockId() + " has no associated farmer");
+        }
 
         // Validate the buyer
         Users buyer = userRepository.findById(cart.getBuyer().getId());
@@ -54,8 +82,6 @@ public class OrderService {
             throw new IllegalArgumentException("Buyer not found with ID: " + cart.getBuyer().getId());
         }
 
-
-        // Redundant check: cart.getBuyer().getId() is already fetched from cart
         if (!buyer.getId().equals(cart.getBuyer().getId())) {
             throw new IllegalArgumentException("Unauthorized: Cart does not belong to this user");
         }
@@ -67,43 +93,61 @@ public class OrderService {
 
         // Create the order
         Orders order = new Orders();
-        order.setCart(cart);
+        List<Cart> carts = new ArrayList<>();
+        carts.add(cart);
+        order.setCarts(carts);
         order.setOrderDate(LocalDate.now());
-        order.setDeliveryDate(LocalDate.now().plusDays(7)); // Example: 7 days from now
-        order.setDeliveryAddress(orders.getDeliveryAddress()); // Use the provided delivery address
+        order.setDeliveryDate(orders.getDeliveryDate() != null ? orders.getDeliveryDate() : LocalDate.now().plusDays(7));
+        order.setDeliveryAddress(orders.getDeliveryAddress());
         order.setOrderStatus(OrderStatus.PENDING);
 
-        // Save the order
+        // Save the order first
         Orders savedOrder = orderRepository.save(order);
-
-        // Add the order to the cart
-        cart.getOrders().add(savedOrder);
+        logger.info("Saved order with ID: {}, associated cart: {}", savedOrder.getId(), cart.getId());
 
         // Reduce livestock quantity
-        Long newStock = cart.getLivestock().getQuantity() - cart.getQuantity();
+        int newStock = (int) (cart.getLivestock().getQuantity() - cart.getQuantity());
         if (newStock < 0) {
             throw new IllegalArgumentException("Stock cannot be negative after order");
         }
-        int newStock1=(int) Math.ceil(newStock);
-        cart.getLivestock().setQuantity(newStock1);
+        cart.getLivestock().setQuantity(newStock);
 
-        // Remove the cart item after the order is created
-        cartRepository.delete(cart);
+        // Save the updated livestock
+        livestockRepository.save(cart.getLivestock());
 
-        return savedOrder;
+        // Update cart with order reference and mark as ordered
+        cart.getOrders().add(savedOrder);
+        cart.setOrdered(true);
+        cartRepository.save(cart);
+
+        // Create response with buyer information
+        OrderResponse response = new OrderResponse();
+        response.setId(savedOrder.getId());
+        response.setOrderDate(savedOrder.getOrderDate());
+        response.setDeliveryDate(savedOrder.getDeliveryDate());
+        response.setOrderStatus(savedOrder.getOrderStatus());
+        response.setPaymentStatus(savedOrder.getPaymentStatus());
+        response.setDeliveryAddress(savedOrder.getDeliveryAddress());
+        response.setCarts(savedOrder.getCarts());
+        
+        // Add buyer information
+        response.setBuyerName(buyer.getFirstName() + " " + buyer.getLastName());
+        response.setBuyerPhone(buyer.getPhoneNumber());
+        response.setBuyerEmail(buyer.getEmail());
+
+        return response;
     }
 
     // Get all orders for a buyer
     public List<Orders> getOrdersForBuyer(Long buyerId) {
         Users buyer = userRepository.findById(buyerId);
-        if (buyer == null) {
-            throw new IllegalArgumentException("Buyer not found with ID: " + buyerId);
+        if(buyer == null) {
+               throw new IllegalArgumentException("Buyer not found with ID: " + buyerId);
         }
-
-
-        if (!"BUYER".equals(buyer.getUserRole())) {
+        if (buyer.getUserRole() != com.Hinga.farmMis.Constants.UserRoles.BUYER) {
             throw new IllegalArgumentException("User is not a buyer");
         }
+
         return orderRepository.findByBuyer(buyer);
     }
 
@@ -113,11 +157,262 @@ public class OrderService {
         if(farmer == null) {
             throw new IllegalArgumentException("Farmer not found with ID: " + farmerId);
         }
-
-
-        if (!"FARMER".equals(farmer.getUserRole())) {
+        if (farmer.getUserRole() != com.Hinga.farmMis.Constants.UserRoles.FARMER) {
             throw new IllegalArgumentException("User is not a farmer");
         }
-        return orderRepository.findByFarmer(farmer);
+        
+        List<Orders> orders = orderRepository.findByFarmer(farmer);
+        logger.info("Retrieved {} orders for farmer ID: {}", orders.size(), farmerId);
+        
+        // Add detailed logging for debugging
+        for (Orders order : orders) {
+            logger.debug("Order ID: {}, Status: {}, Carts: {}", 
+                order.getId(), 
+                order.getOrderStatus(),
+                order.getCarts().stream()
+                    .map(cart -> String.format("Cart[ID=%d, LivestockID=%d]", 
+                        cart.getId(), 
+                        cart.getLivestock() != null ? cart.getLivestock().getLivestockId() : -1))
+                    .collect(Collectors.joining(", "))
+            );
+        }
+        
+        return orders;
+    }
+
+    // Approve an order (set status to SHIPPED)
+    @Transactional
+    public Orders approveOrder(Long orderId, Long farmerId) {
+        Orders order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new IllegalArgumentException("Order not found with ID: " + orderId));
+        Users farmer = userRepository.findById(farmerId);
+        if(farmer == null) {
+            throw new IllegalArgumentException("Farmer not found with ID: " + farmerId);
+        }
+
+        // Check if any cart in the order belongs to this farmer
+        boolean hasFarmerLivestock = order.getCarts().stream()
+                .anyMatch(cart -> cart.getLivestock() != null &&
+                        cart.getLivestock().getFarmer() != null &&
+                        cart.getLivestock().getFarmer().getId().equals(farmerId));
+        
+        if (!hasFarmerLivestock) {
+            throw new IllegalArgumentException("Unauthorized: Order does not contain any livestock from this farmer");
+        }
+
+        // Only update status for carts belonging to this farmer
+        order.getCarts().stream()
+            .filter(cart -> cart.getLivestock() != null &&
+                    cart.getLivestock().getFarmer() != null &&
+                    cart.getLivestock().getFarmer().getId().equals(farmerId))
+            .forEach(cart -> cart.setOrdered(true));
+
+        order.setOrderStatus(OrderStatus.SHIPPED);
+        return orderRepository.save(order);
+    }
+
+    // Cancel an order (set status to CANCELLED)
+    @Transactional
+    public Orders cancelOrder(Long orderId, Long farmerId) {
+        Orders order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new IllegalArgumentException("Order not found with ID: " + orderId));
+        Users farmer = userRepository.findById(farmerId);
+        if(farmer==null) {
+            throw new IllegalArgumentException("Farmer not found with ID: " + farmerId);
+        }
+
+        // Check if any cart in the order belongs to this farmer
+        boolean hasFarmerLivestock = order.getCarts().stream()
+                .anyMatch(cart -> cart.getLivestock() != null &&
+                        cart.getLivestock().getFarmer() != null &&
+                        cart.getLivestock().getFarmer().getId().equals(farmerId));
+        
+        if (!hasFarmerLivestock) {
+            throw new IllegalArgumentException("Unauthorized: Order does not contain any livestock from this farmer");
+        }
+
+        // Only update status for carts belonging to this farmer
+        order.getCarts().stream()
+            .filter(cart -> cart.getLivestock() != null &&
+                    cart.getLivestock().getFarmer() != null &&
+                    cart.getLivestock().getFarmer().getId().equals(farmerId))
+            .forEach(cart -> cart.setOrdered(false));
+
+        order.setOrderStatus(OrderStatus.CANCELLED);
+        return orderRepository.save(order);
+    }
+
+    // Get order details by ID
+    public Orders getOrderById(Long orderId) {
+        return orderRepository.findById(orderId)
+                .orElseThrow(() -> new IllegalArgumentException("Order not found with ID: " + orderId));
+    }
+
+    // Create an order from multiple carts
+    @Transactional
+    public OrderResponse createOrderFromCarts(Long buyerId, MultiCartOrderRequest request) {
+        if (request == null || request.getCartIds() == null || request.getCartIds().isEmpty()) {
+            throw new IllegalArgumentException("Cart IDs are required");
+        }
+        if (request.getDeliveryAddress() == null ||
+                request.getDeliveryAddress().getProvince() == null || request.getDeliveryAddress().getProvince().trim().isEmpty() ||
+                request.getDeliveryAddress().getDistrict() == null || request.getDeliveryAddress().getDistrict().trim().isEmpty() ||
+                request.getDeliveryAddress().getSector() == null || request.getDeliveryAddress().getSector().trim().isEmpty() ||
+                request.getDeliveryAddress().getCell() == null || request.getDeliveryAddress().getCell().trim().isEmpty() ||
+                request.getDeliveryAddress().getVillage() == null || request.getDeliveryAddress().getVillage().trim().isEmpty()) {
+            throw new IllegalArgumentException("All delivery address fields are required");
+        }
+
+        Users buyer = userRepository.findById(buyerId);
+        if(buyer == null) {
+            throw new IllegalArgumentException("Buyer not found with ID: " + buyerId);
+        }
+
+        // Fetch carts with livestock and farmer eagerly
+        List<Cart> carts = cartRepository.findByIdInAndBuyerId(request.getCartIds(), buyerId);
+        if (carts.isEmpty()) {
+            throw new IllegalArgumentException("No valid carts found for the provided IDs");
+        }
+
+        // Validate carts
+        for (Cart cart : carts) {
+            logger.debug("Processing cart ID: {}, livestock ID: {}, buyer ID: {}",
+                    cart.getId(),
+                    cart.getLivestock() != null ? cart.getLivestock().getLivestockId() : "null",
+                    cart.getBuyer() != null ? cart.getBuyer().getId() : "null");
+            if (cart.getLivestock() == null) {
+                throw new IllegalArgumentException("Cart ID " + cart.getId() + " has no associated livestock");
+            }
+            if (cart.getLivestock().getFarmer() == null) {
+                throw new IllegalArgumentException("Livestock ID " + cart.getLivestock().getLivestockId() + " has no associated farmer");
+            }
+            if (!cart.getBuyer().getId().equals(buyerId)) {
+                throw new IllegalArgumentException("Unauthorized: Cart ID " + cart.getId() + " does not belong to this user");
+            }
+            if (cart.getQuantity() > cart.getLivestock().getQuantity()) {
+                throw new IllegalArgumentException("Requested quantity (" + cart.getQuantity() + ") exceeds available stock (" + cart.getLivestock().getQuantity() + ") for cart ID " + cart.getId());
+            }
+        }
+
+        // Create the order
+        Orders order = new Orders();
+        order.setCarts(carts);
+        order.setOrderDate(LocalDate.now());
+        order.setDeliveryDate(LocalDate.now().plusDays(7));
+        order.setDeliveryAddress(request.getDeliveryAddress());
+        order.setOrderStatus(OrderStatus.PENDING);
+
+        // Save the order first
+        Orders savedOrder = orderRepository.save(order);
+        logger.info("Saved order with ID: {}, associated carts: {}", savedOrder.getId(), 
+            carts.stream().map(Cart::getId).collect(Collectors.toList()));
+
+        // Update livestock quantity and mark carts as ordered
+        for (Cart cart : carts) {
+            int newStock = (int) (cart.getLivestock().getQuantity() - cart.getQuantity());
+            if (newStock < 0) {
+                throw new IllegalArgumentException("Stock cannot be negative for livestock ID " + cart.getLivestock().getLivestockId());
+            }
+            cart.getLivestock().setQuantity(newStock);
+            livestockRepository.save(cart.getLivestock());
+
+            // Update cart with order reference and mark as ordered
+            cart.getOrders().add(savedOrder);
+            cart.setOrdered(true);
+            cartRepository.save(cart);
+        }
+
+        // Create response with buyer information
+        OrderResponse response = new OrderResponse();
+        response.setId(savedOrder.getId());
+        response.setOrderDate(savedOrder.getOrderDate());
+        response.setDeliveryDate(savedOrder.getDeliveryDate());
+        response.setOrderStatus(savedOrder.getOrderStatus());
+        response.setPaymentStatus(savedOrder.getPaymentStatus());
+        response.setDeliveryAddress(savedOrder.getDeliveryAddress());
+        response.setCarts(savedOrder.getCarts());
+        
+        // Add buyer information
+        response.setBuyerName(buyer.getFirstName() + " " + buyer.getLastName());
+        response.setBuyerPhone(buyer.getPhoneNumber());
+        response.setBuyerEmail(buyer.getEmail());
+
+        return response;
+    }
+
+    // Get order summary for a farmer
+    public FarmerOrderSummary getOrderSummaryForFarmer(Long farmerId) {
+        Users farmer = userRepository.findById(farmerId);
+        if(farmer == null) {
+            throw new IllegalArgumentException("Farmer not found with ID: " + farmerId);
+        }
+        if (farmer.getUserRole() != com.Hinga.farmMis.Constants.UserRoles.FARMER) {
+            throw new IllegalArgumentException("User is not a farmer");
+        }
+        
+        List<Orders> orders = orderRepository.findByFarmer(farmer);
+        FarmerOrderSummary summary = new FarmerOrderSummary();
+        
+        // Initialize counters
+        Map<OrderStatus, Long> ordersByStatus = new HashMap<>();
+        Map<PaymentStatus, Long> ordersByPaymentStatus = new HashMap<>();
+        Map<String, Long> livestockTypeCounts = new HashMap<>();
+        long totalLivestockOrdered = 0;
+        List<FarmerOrderSummary.OrderWithBuyerInfo> ordersWithBuyerInfo = new ArrayList<>();
+        
+        // Process each order
+        for (Orders order : orders) {
+            // Count by status
+            ordersByStatus.merge(order.getOrderStatus(), 1L, Long::sum);
+            ordersByPaymentStatus.merge(order.getPaymentStatus(), 1L, Long::sum);
+            
+            // Create buyer info for this order
+            FarmerOrderSummary.OrderWithBuyerInfo buyerInfo = new FarmerOrderSummary.OrderWithBuyerInfo();
+            buyerInfo.setOrderId(order.getId());
+            buyerInfo.setOrderStatus(order.getOrderStatus());
+            
+            // Get buyer information from the first cart (since all carts in an order belong to the same buyer)
+            if (!order.getCarts().isEmpty()) {
+                Users buyer = order.getCarts().get(0).getBuyer();
+                buyerInfo.setBuyerName(buyer.getFirstName() + " " + buyer.getLastName());
+                buyerInfo.setBuyerPhone(buyer.getPhoneNumber());
+                buyerInfo.setBuyerEmail(buyer.getEmail());
+                
+                // Format delivery address
+                if (order.getDeliveryAddress() != null) {
+                    String address = String.format("%s, %s, %s, %s, %s",
+                        order.getDeliveryAddress().getProvince(),
+                        order.getDeliveryAddress().getDistrict(),
+                        order.getDeliveryAddress().getSector(),
+                        order.getDeliveryAddress().getCell(),
+                        order.getDeliveryAddress().getVillage());
+                    buyerInfo.setDeliveryAddress(address);
+                }
+            }
+            
+            ordersWithBuyerInfo.add(buyerInfo);
+            
+            // Process each cart in the order
+            for (Cart cart : order.getCarts()) {
+                if (cart.getLivestock() != null) {
+                    // Add to total livestock count
+                    totalLivestockOrdered += cart.getQuantity();
+                    
+                    // Count by livestock type
+                    String livestockType = cart.getLivestock().getType();
+                    livestockTypeCounts.merge(livestockType, cart.getQuantity(), Long::sum);
+                }
+            }
+        }
+        
+        // Set summary values
+        summary.setTotalOrders((long) orders.size());
+        summary.setTotalLivestockOrdered(totalLivestockOrdered);
+        summary.setOrdersByStatus(ordersByStatus);
+        summary.setOrdersByPaymentStatus(ordersByPaymentStatus);
+        summary.setLivestockTypeCounts(livestockTypeCounts);
+        summary.setOrdersWithBuyerInfo(ordersWithBuyerInfo);
+        
+        return summary;
     }
 }

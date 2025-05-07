@@ -7,6 +7,9 @@ import com.Hinga.farmMis.Model.Farmer;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.autoconfigure.domain.EntityScan;
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.transaction.annotation.EnableTransactionManagement;
 import org.springframework.context.annotation.Bean;
 import org.springframework.scheduling.annotation.EnableAsync;
 
@@ -16,7 +19,9 @@ import java.util.List;
 import java.util.Optional;
 
 @SpringBootApplication
-
+@EnableJpaRepositories(basePackages = "com.Hinga.farmMis.repository")
+@EntityScan(basePackages = "com.Hinga.farmMis.Model")
+@EnableTransactionManagement
 public class FarmMisApplication {
 
 	public static void main(String[] args) {

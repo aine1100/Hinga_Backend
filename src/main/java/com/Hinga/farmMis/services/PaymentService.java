@@ -1,37 +1,43 @@
-//package com.Hinga.farmMis.services;
-//
-//import com.Hinga.farmMis.utils.Payments;
-//import com.stripe.exception.StripeException;
-//import com.stripe.model.PaymentIntent;
-//import com.stripe.param.PaymentIntentCreateParams;
-//import org.springframework.stereotype.Service;
-//
-//@Service
-//public class PaymentService {
-//
-//    public PaymentIntent createPaymentIntent(Payments payments, double amount) throws StripeException {
-//        // PaymentIntent expects amount in cents, so multiply by 100
-//        long amountInCents = (long) (amount * 100);
-//
-//        // Set up the PaymentIntent creation parameters
-//        PaymentIntentCreateParams.Builder paramsBuilder = PaymentIntentCreateParams.builder()
-//                .setAmount(amountInCents) // Stripe expects amount in cents
-//                .setCurrency("usd") // Set currency to USD or allow dynamic change
-//                .setDescription("Payment for Order") // Optional description
-//                .setReceiptEmail(payments.getCustomerEmail()); // Optional, if you want to send a receipt email
-//
-//        // Add the payment method and customer information
-//        if (payments.getPaymentMethodId() != null && !payments.getPaymentMethodId().isEmpty()) {
-//            paramsBuilder.setPaymentMethod(payments.getPaymentMethodId());
-//        }
-//
-//        // Set the customer ID if available (optional, Stripe can associate the payment with the customer)
-//        // You may need to create a customer object separately and link the customer ID here
-//        // Example: .setCustomer(customerId);
-//
-//        PaymentIntentCreateParams params = paramsBuilder.build();
-//
-//        // Create the PaymentIntent on Stripe
-//        return PaymentIntent.create(params);
-//    }
-//}
+package com.Hinga.farmMis.services;
+
+import com.Hinga.farmMis.Model.Orders;
+import com.Hinga.farmMis.Model.Cart;
+import com.stripe.exception.StripeException;
+import com.stripe.model.checkout.Session;
+import com.stripe.param.checkout.SessionCreateParams;
+import org.springframework.stereotype.Service;
+
+import java.util.ArrayList;
+import java.util.List;
+
+@Service
+public class PaymentService {
+    public Session createCheckoutSessionForOrder(Orders order, String successUrl, String cancelUrl) throws StripeException {
+        List<SessionCreateParams.LineItem> lineItems = new ArrayList<>();
+        for (Cart cart : order.getCarts()) {
+            long unitAmount = (long) (cart.getLivestock().getPrice() * 100); // Stripe expects cents
+            SessionCreateParams.LineItem lineItem = SessionCreateParams.LineItem.builder()
+                    .setQuantity((long) cart.getQuantity())
+                    .setPriceData(
+                            SessionCreateParams.LineItem.PriceData.builder()
+                                    .setCurrency("usd")
+                                    .setUnitAmount(unitAmount)
+                                    .setProductData(
+                                            SessionCreateParams.LineItem.PriceData.ProductData.builder()
+                                                    .setName(cart.getLivestock().getType() + " - " + cart.getLivestock().getBreed())
+                                                    .build()
+                                    )
+                                    .build()
+                    )
+                    .build();
+            lineItems.add(lineItem);
+        }
+        SessionCreateParams params = SessionCreateParams.builder()
+                .setMode(SessionCreateParams.Mode.PAYMENT)
+                .setSuccessUrl(successUrl)
+                .setCancelUrl(cancelUrl)
+                .addAllLineItem(lineItems)
+                .build();
+        return Session.create(params);
+    }
+}

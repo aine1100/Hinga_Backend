@@ -1,6 +1,7 @@
 package com.Hinga.farmMis.Model;
 
 import com.Hinga.farmMis.Constants.OrderStatus;
+import com.Hinga.farmMis.Constants.PaymentStatus;
 import com.Hinga.farmMis.utils.Address;
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -12,17 +13,21 @@ import java.time.LocalDate;
 public class Orders {
     @Id @GeneratedValue(strategy = GenerationType.AUTO)
     private Long id;
-    @ManyToOne(fetch = FetchType.EAGER)
-    @JsonIgnore
-    @JoinColumn(name = "cart_id",nullable = false)
-
-    private Cart cart;
+    @ManyToMany(fetch = FetchType.EAGER)
+    @JoinTable(
+        name = "order_carts",
+        joinColumns = @JoinColumn(name = "order_id"),
+        inverseJoinColumns = @JoinColumn(name = "cart_id")
+    )
+    private java.util.List<Cart> carts;
     private LocalDate orderDate;
     private LocalDate deliveryDate;
     @Embedded
     private Address deliveryAddress;
     @Enumerated(EnumType.STRING)
     private OrderStatus orderStatus;
+    @Enumerated(EnumType.STRING)
+    private PaymentStatus paymentStatus = PaymentStatus.PENDING;
 
     public Long getId() {
         return id;
@@ -32,12 +37,12 @@ public class Orders {
         this.id = id;
     }
 
-    public Cart getCart() {
-        return cart;
+    public java.util.List<Cart> getCarts() {
+        return carts;
     }
 
-    public void setCart(Cart cart) {
-        this.cart = cart;
+    public void setCarts(java.util.List<Cart> carts) {
+        this.carts = carts;
     }
 
     public LocalDate getOrderDate() {
@@ -72,15 +77,24 @@ public class Orders {
         this.orderStatus = orderStatus;
     }
 
+    public PaymentStatus getPaymentStatus() {
+        return paymentStatus;
+    }
+
+    public void setPaymentStatus(PaymentStatus paymentStatus) {
+        this.paymentStatus = paymentStatus;
+    }
+
     @Override
     public String toString() {
         return "Orders{" +
                 "id=" + id +
-                ", cart=" + cart +
+                ", carts=" + carts +
                 ", orderDate=" + orderDate +
                 ", deliveryDate=" + deliveryDate +
                 ", deliveryAddress=" + deliveryAddress +
                 ", orderStatus=" + orderStatus +
+                ", paymentStatus=" + paymentStatus +
                 '}';
     }
 }

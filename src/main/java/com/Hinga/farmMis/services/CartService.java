@@ -7,6 +7,7 @@ import com.Hinga.farmMis.repository.CartRepository;
 import com.Hinga.farmMis.repository.LivestockRepository;
 import com.Hinga.farmMis.repository.UserRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -56,11 +57,13 @@ public class CartService {
             throw new IllegalArgumentException("Requested quantity (" + cart.getQuantity() + ") exceeds available stock (" + livestock.getQuantity() + ")");
         }
 
+        // Check for existing un-ordered cart entries
+        List<Cart> existingCarts = cartRepository.findUnorderedByLivestockAndBuyer(livestock, buyer);
 
-        // Check for existing cart entry
-        Cart existingCart = cartRepository.findByLivestockAndBuyer(livestock, buyer);
-
-        if (existingCart != null) {
+        if (!existingCarts.isEmpty()) {
+            // Get the most recent un-ordered cart
+            Cart existingCart = existingCarts.get(0);
+            
             // Update existing cart
             Long newQuantity = existingCart.getQuantity() + cart.getQuantity();
             if (newQuantity > livestock.getQuantity()) {
@@ -76,6 +79,7 @@ public class CartService {
             newCart.setBuyer(buyer);
             newCart.setQuantity(cart.getQuantity());
             newCart.setUnitPrice((long) livestock.getPrice());
+            newCart.setOrdered(false); // Ensure it's not marked as ordered
             newCart.calculateTotalPrice();
             return cartRepository.save(newCart);
         }
@@ -87,7 +91,7 @@ public class CartService {
         if (user == null) {
             throw new IllegalArgumentException("User not found with ID: " + userId);
         }
-        return cartRepository.findByBuyer(user);
+        return cartRepository.findByBuyerAndOrderedFalse(user);
     }
 
     // ✅ Update quantity for a specific cart item
@@ -133,5 +137,32 @@ public class CartService {
         }
 
         cartRepository.deleteByBuyer(user);
+    }
+
+    // Delete multiple cart items by their IDs
+    @Transactional
+    public void deleteCartItemsByIds(List<Long> cartIds) {
+        if (cartIds == null || cartIds.isEmpty()) {
+            return;
+        }
+        
+        // First find all carts
+        List<Cart> carts = cartRepository.findAllById(cartIds);
+        
+        // Mark them as ordered
+        for (Cart cart : carts) {
+            cart.setOrdered(true);
+            cartRepository.save(cart);
+        }
+        
+        // Clear any relationships before deletion
+        for (Cart cart : carts) {
+            cart.setBuyer(null);
+            cart.setLivestock(null);
+            cartRepository.save(cart);
+        }
+        
+        // Now delete them
+        cartRepository.deleteAllById(cartIds);
     }
 }

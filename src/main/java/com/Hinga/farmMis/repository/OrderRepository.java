@@ -10,11 +10,13 @@ import java.util.List;
 
 public interface OrderRepository extends JpaRepository<Orders, Long> {
 
-    // Find orders by buyer (cart.buyer)
-    @Query("SELECT o FROM Orders o WHERE o.cart.buyer = :buyer")
+    // Find orders by buyer (where any cart in the order belongs to the buyer)
+    @Query("SELECT DISTINCT o FROM Orders o WHERE NOT EXISTS (" +
+            "SELECT c FROM o.carts c WHERE c.buyer != :buyer)")
     List<Orders> findByBuyer(@Param("buyer") Users buyer);
 
-    // Find orders by farmer (cart.livestock.farmer)
-    @Query("SELECT o FROM Orders o WHERE o.cart.livestock.farmer = :farmer")
+    @Query("SELECT DISTINCT o FROM Orders o JOIN o.carts c WHERE c.livestock.farmer = :farmer")
     List<Orders> findByFarmer(@Param("farmer") Users farmer);
+
+
 }

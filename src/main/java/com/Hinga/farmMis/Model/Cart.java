@@ -37,10 +37,11 @@ public class Cart {
     private Long quantity;
     private Long unitPrice;
     private Long totalPrice;
-    @OneToMany(mappedBy = "cart", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @ManyToMany(mappedBy = "carts", fetch = FetchType.EAGER)
     @JsonIgnore
-
     private List<Orders> orders = new ArrayList<>();
+
+    private boolean ordered = false;
 
     public void calculateTotalPrice() {
         if (unitPrice != null && quantity != null) {
@@ -102,5 +103,13 @@ public class Cart {
 
     public void setOrders(List<Orders> orders) {
         this.orders = orders;
+    }
+
+    public boolean isOrdered() {
+        return ordered;
+    }
+
+    public void setOrdered(boolean ordered) {
+        this.ordered = ordered;
     }
 }
