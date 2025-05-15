@@ -6,6 +6,7 @@ import com.Hinga.farmMis.Model.Cart;
 import com.Hinga.farmMis.services.JwtService;
 import com.Hinga.farmMis.services.OrderService;
 import com.Hinga.farmMis.Dto.Request.MultiCartOrderRequest;
+import com.Hinga.farmMis.Dto.Request.OrderRequest;
 import com.Hinga.farmMis.Dto.response.FarmerOrderSummary;
 import com.Hinga.farmMis.Dto.response.OrderResponse;
 import com.Hinga.farmMis.services.PaymentService;
@@ -14,38 +15,96 @@ import com.stripe.exception.StripeException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import io.jsonwebtoken.Claims;
+import com.Hinga.farmMis.services.PdfService;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
 import java.util.List;
+import java.time.LocalDate;
 
 @RestController
 @RequestMapping("/api/orders")
+@CrossOrigin(origins = "http://localhost:5173")
 public class OrderController {
 
     private final OrderService orderService;
     private final JwtService jwtService;
     private final PaymentService paymentService;
+    private final PdfService pdfService;
 
-    public OrderController(OrderService orderService, JwtService jwtService, PaymentService paymentService) {
+    public OrderController(OrderService orderService, JwtService jwtService, PaymentService paymentService, PdfService pdfService) {
         this.orderService = orderService;
         this.jwtService = jwtService;
         this.paymentService = paymentService;
+        this.pdfService = pdfService;
     }
 
     @PostMapping("/create-from-cart")
     public ResponseEntity<?> createOrderFromCart(
             @RequestHeader("Authorization") String token,
-            @RequestBody Orders request) {
+            @RequestBody OrderRequest request) {
         try {
             Long userId = extractUserId(token);
-            System.out.println(request.toString());
-            System.out.println(request.toString());
 
-            // Validate cartId
-            if (request.getCarts() == null || request.getCarts().isEmpty() || request.getCarts().get(0) == null || request.getCarts().get(0).getId() == 0) {
+            // Extract JWT token properly
+            String jwtToken = token.substring(7); // Remove "Bearer " prefix
+
+            // Extract buyer information from token
+            String firstName = jwtService.extractFirstName(jwtToken);
+            String lastName = jwtService.extractLastName(jwtToken);
+            String buyerPhone = jwtService.extractPhoneNumber(jwtToken);
+
+            // Validate extracted values
+            if (firstName == null || firstName.trim().isEmpty() || lastName == null || lastName.trim().isEmpty()) {
+                return new ResponseEntity<>("Error: Invalid or missing buyer name in token", HttpStatus.BAD_REQUEST);
+            }
+            if (buyerPhone == null || buyerPhone.trim().isEmpty()) {
+                return new ResponseEntity<>("Error: Invalid or missing buyer phone in token", HttpStatus.BAD_REQUEST);
+            }
+
+            String buyerName = firstName.trim() + " " + lastName.trim();
+
+            // Debug logging
+            System.out.println("=== Token Information ===");
+            System.out.println("JWT Token: " + jwtToken);
+            System.out.println("Buyer Name from token: " + buyerName);
+            System.out.println("Buyer Phone from token: " + buyerPhone);
+            System.out.println("=======================");
+
+            // Validate request
+            if (request.getCarts() == null || request.getCarts().isEmpty() || request.getCarts().get(0) == null ) {
                 return new ResponseEntity<>("Error: Cart ID is required", HttpStatus.BAD_REQUEST);
             }
 
-            OrderResponse createdOrder = orderService.createOrderFromCart(request);
+            if (request.getDeliveryAddress() == null ||
+                    request.getDeliveryAddress().getProvince() == null || request.getDeliveryAddress().getProvince().trim().isEmpty() ||
+                    request.getDeliveryAddress().getDistrict() == null || request.getDeliveryAddress().getDistrict().trim().isEmpty() ||
+                    request.getDeliveryAddress().getSector() == null || request.getDeliveryAddress().getSector().trim().isEmpty() ||
+                    request.getDeliveryAddress().getCell() == null || request.getDeliveryAddress().getCell().trim().isEmpty() ||
+                    request.getDeliveryAddress().getVillage() == null || request.getDeliveryAddress().getVillage().trim().isEmpty()) {
+                return new ResponseEntity<>("Error: All delivery address fields are required", HttpStatus.BAD_REQUEST);
+            }
+
+            // Create Orders object from request
+            Orders order = new Orders();
+            order.setCarts(request.getCarts());
+            order.setDeliveryDate(request.getDeliveryDate() != null ? request.getDeliveryDate() : LocalDate.now().plusDays(7));
+            order.setDeliveryAddress(request.getDeliveryAddress());
+            order.setBuyerName(buyerName);
+            order.setBuyerPhone(buyerPhone);
+
+            // Debug logging for order object
+            System.out.println("=== Order Object Before Service ===");
+            System.out.println("Order ID: " + order.getId());
+            System.out.println("Order Buyer Name: " + order.getBuyerName());
+            System.out.println("Order Buyer Phone: " + order.getBuyerPhone());
+            System.out.println("Order Status: " + order.getOrderStatus());
+            System.out.println("================================");
+
+            OrderResponse createdOrder = orderService.createOrderFromCart(order);
             return new ResponseEntity<>(createdOrder, HttpStatus.CREATED);
         } catch (IllegalArgumentException e) {
             return new ResponseEntity<>("Error: " + e.getMessage(), HttpStatus.BAD_REQUEST);
@@ -53,7 +112,6 @@ public class OrderController {
             return new ResponseEntity<>("Server error: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
-
     @GetMapping("/buyer")
     public ResponseEntity<?> getBuyerOrders(@RequestHeader("Authorization") String token) {
         try {
@@ -192,6 +250,43 @@ public class OrderController {
             
             FarmerOrderSummary summary = orderService.getOrderSummaryForFarmer(userId);
             return new ResponseEntity<>(summary, HttpStatus.OK);
+        } catch (IllegalArgumentException e) {
+            return new ResponseEntity<>("Error: " + e.getMessage(), HttpStatus.BAD_REQUEST);
+        } catch (Exception e) {
+            return new ResponseEntity<>("Server error: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    @GetMapping("/farmer/download")
+    public ResponseEntity<?> downloadFarmerOrders(@RequestHeader("Authorization") String token) {
+        try {
+            String jwtToken = token.substring(7);
+            UserRoles role = jwtService.extractRole(jwtToken);
+            Long userId = jwtService.extractId(jwtToken);
+            
+            if (role != UserRoles.FARMER) {
+                return new ResponseEntity<>("Unauthorized: Only farmers can access this endpoint", HttpStatus.FORBIDDEN);
+            }
+            
+            // Get farmer's name for the PDF title
+            String farmerName = jwtService.extractFirstName(jwtToken) + " " + jwtService.extractLastName(jwtToken);
+            
+            // Get orders
+            List<Orders> orders = orderService.getOrdersForFarmer(userId);
+            
+            // Generate PDF
+            byte[] pdfBytes = pdfService.generateOrdersPdf(orders, farmerName);
+            
+            // Create filename with timestamp
+            String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
+            String filename = "orders_" + farmerName.replace(" ", "_") + "_" + timestamp + ".pdf";
+            
+            // Set headers for PDF download
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_PDF);
+            headers.setContentDispositionFormData("attachment", filename);
+            
+            return new ResponseEntity<>(pdfBytes, headers, HttpStatus.OK);
         } catch (IllegalArgumentException e) {
             return new ResponseEntity<>("Error: " + e.getMessage(), HttpStatus.BAD_REQUEST);
         } catch (Exception e) {

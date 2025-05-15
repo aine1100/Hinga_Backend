@@ -41,6 +41,13 @@ public class JwtService {
         claims.put("phoneNumber", user.getPhoneNumber());
         claims.put("address", user.getAddress());
         claims.put("role", user.getUserRole());
+        
+        // Debug logging
+        System.out.println("Generating token with claims: " + claims);
+        System.out.println("User details - First Name: " + user.getFirstName() + 
+                          ", Last Name: " + user.getLastName() + 
+                          ", Phone: " + user.getPhoneNumber());
+        
         return createToken(claims, user.getId());
     }
 
@@ -98,12 +105,19 @@ public class JwtService {
         return claimsResolver.apply(claims);
     }
 
-    private Claims extractAllClaims(String token) {
-        return Jwts.parser()
-                .setSigningKey(getSignKey())
-                .build()
-                .parseClaimsJws(token)
-                .getBody();
+    public Claims extractAllClaims(String token) {
+        try {
+            Claims claims = Jwts.parser()
+                    .setSigningKey(getSignKey())
+                    .build()
+                    .parseClaimsJws(token)
+                    .getBody();
+            System.out.println("Successfully extracted claims: " + claims);
+            return claims;
+        } catch (Exception e) {
+            System.out.println("Error extracting claims: " + e.getMessage());
+            throw e;
+        }
     }
 
     private Boolean isTokenExpired(String token) {

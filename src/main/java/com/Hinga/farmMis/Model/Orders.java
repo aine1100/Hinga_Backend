@@ -29,6 +29,12 @@ public class Orders {
     @Enumerated(EnumType.STRING)
     private PaymentStatus paymentStatus = PaymentStatus.PENDING;
 
+    @Column(name = "buyer_name", nullable = false, length = 255)
+    private String buyerName;
+    
+    @Column(name = "buyer_phone", nullable = false, length = 20)
+    private String buyerPhone;
+
     public Long getId() {
         return id;
     }
@@ -83,6 +89,22 @@ public class Orders {
 
     public void setPaymentStatus(PaymentStatus paymentStatus) {
         this.paymentStatus = paymentStatus;
+    }
+
+    public String getBuyerName() {
+        return buyerName;
+    }
+
+    public void setBuyerName(String buyerName) {
+        this.buyerName = buyerName != null ? buyerName.trim() : null;
+    }
+
+    public String getBuyerPhone() {
+        return buyerPhone;
+    }
+
+    public void setBuyerPhone(String buyerPhone) {
+        this.buyerPhone = buyerPhone != null ? buyerPhone.trim() : null;
     }
 
     @Override

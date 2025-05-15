@@ -100,9 +100,37 @@ public class OrderService {
         order.setDeliveryDate(orders.getDeliveryDate() != null ? orders.getDeliveryDate() : LocalDate.now().plusDays(7));
         order.setDeliveryAddress(orders.getDeliveryAddress());
         order.setOrderStatus(OrderStatus.PENDING);
+        
+        // Debug logging for incoming order
+        System.out.println("=== Service Layer Debug ===");
+        System.out.println("Incoming Order Buyer Name: " + orders.getBuyerName());
+        System.out.println("Incoming Order Buyer Phone: " + orders.getBuyerPhone());
+        
+        // Set buyer information from the incoming order
+        if (orders.getBuyerName() != null && !orders.getBuyerName().trim().isEmpty()) {
+            order.setBuyerName(orders.getBuyerName());
+        } else {
+            System.out.println("Warning: Buyer name is null or empty in incoming order");
+        }
+        
+        if (orders.getBuyerPhone() != null && !orders.getBuyerPhone().trim().isEmpty()) {
+            order.setBuyerPhone(orders.getBuyerPhone());
+        } else {
+            System.out.println("Warning: Buyer phone is null or empty in incoming order");
+        }
+        
+        System.out.println("Order Object Before Save - Buyer Name: " + order.getBuyerName());
+        System.out.println("Order Object Before Save - Buyer Phone: " + order.getBuyerPhone());
 
         // Save the order first
         Orders savedOrder = orderRepository.save(order);
+        
+        // Debug logging after save
+        System.out.println("Saved Order - ID: " + savedOrder.getId());
+        System.out.println("Saved Order - Buyer Name: " + savedOrder.getBuyerName());
+        System.out.println("Saved Order - Buyer Phone: " + savedOrder.getBuyerPhone());
+        System.out.println("=========================");
+        
         logger.info("Saved order with ID: {}, associated cart: {}", savedOrder.getId(), cart.getId());
 
         // Reduce livestock quantity
@@ -130,10 +158,10 @@ public class OrderService {
         response.setDeliveryAddress(savedOrder.getDeliveryAddress());
         response.setCarts(savedOrder.getCarts());
         
-        // Add buyer information
-        response.setBuyerName(buyer.getFirstName() + " " + buyer.getLastName());
-        response.setBuyerPhone(buyer.getPhoneNumber());
-        response.setBuyerEmail(buyer.getEmail());
+        // Add buyer information from the saved order
+        response.setBuyerName(savedOrder.getBuyerName());
+        response.setBuyerPhone(savedOrder.getBuyerPhone());
+        response.setBuyerEmail(buyer.getEmail()); // Keep email from user object as it's not in the request
 
         return response;
     }
