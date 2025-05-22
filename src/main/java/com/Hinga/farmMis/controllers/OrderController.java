@@ -1,5 +1,6 @@
 package com.Hinga.farmMis.controllers;
 
+import com.Hinga.farmMis.Constants.OrderStatus;
 import com.Hinga.farmMis.Constants.UserRoles;
 import com.Hinga.farmMis.Model.Orders;
 import com.Hinga.farmMis.Model.Cart;
@@ -21,6 +22,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import org.springframework.beans.factory.annotation.Value;
 
 import java.util.List;
 import java.time.LocalDate;
@@ -34,6 +36,13 @@ public class OrderController {
     private final JwtService jwtService;
     private final PaymentService paymentService;
     private final PdfService pdfService;
+    private OrderStatus status;
+
+    @Value("${stripe.success.url}")
+    private String successUrl;
+
+    @Value("${stripe.cancel.url}")
+    private String cancelUrl;
 
     public OrderController(OrderService orderService, JwtService jwtService, PaymentService paymentService, PdfService pdfService) {
         this.orderService = orderService;
@@ -75,8 +84,8 @@ public class OrderController {
             System.out.println("=======================");
 
             // Validate request
-            if (request.getCarts() == null || request.getCarts().isEmpty() || request.getCarts().get(0) == null ) {
-                return new ResponseEntity<>("Error: Cart ID is required", HttpStatus.BAD_REQUEST);
+            if (request.getSelectedCartIds() == null || request.getSelectedCartIds().isEmpty()) {
+                return new ResponseEntity<>("Error: At least one cart ID must be selected", HttpStatus.BAD_REQUEST);
             }
 
             if (request.getDeliveryAddress() == null ||
@@ -90,7 +99,6 @@ public class OrderController {
 
             // Create Orders object from request
             Orders order = new Orders();
-            order.setCarts(request.getCarts());
             order.setDeliveryDate(request.getDeliveryDate() != null ? request.getDeliveryDate() : LocalDate.now().plusDays(7));
             order.setDeliveryAddress(request.getDeliveryAddress());
             order.setBuyerName(buyerName);
@@ -104,7 +112,7 @@ public class OrderController {
             System.out.println("Order Status: " + order.getOrderStatus());
             System.out.println("================================");
 
-            OrderResponse createdOrder = orderService.createOrderFromCart(order);
+            OrderResponse createdOrder = orderService.createOrderFromSelectedCarts(order, request.getSelectedCartIds(), userId);
             return new ResponseEntity<>(createdOrder, HttpStatus.CREATED);
         } catch (IllegalArgumentException e) {
             return new ResponseEntity<>("Error: " + e.getMessage(), HttpStatus.BAD_REQUEST);
@@ -160,6 +168,35 @@ public class OrderController {
             Long farmerId = extractUserId(token);
             Orders approvedOrder = orderService.approveOrder(orderId, farmerId);
             return new ResponseEntity<>(approvedOrder, HttpStatus.OK);
+        } catch (IllegalArgumentException e) {
+            return new ResponseEntity<>("Error: " + e.getMessage(), HttpStatus.BAD_REQUEST);
+        } catch (Exception e) {
+            return new ResponseEntity<>("Server error: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    @PostMapping("/{orderId}/pay-after-approval")
+    public ResponseEntity<?> payAfterApproval(@RequestHeader("Authorization") String token, @PathVariable Long orderId) {
+        try {
+            Long userId = extractUserId(token);
+            Orders order = orderService.getOrderById(orderId);
+            
+            // Verify order status
+            if (order.getOrderStatus() != OrderStatus.APPROVED) {
+                return new ResponseEntity<>("Order must be approved before payment", HttpStatus.BAD_REQUEST);
+            }            
+            // Only allow buyer to pay
+            Long buyerId = order.getCarts().get(0).getBuyer().getId();
+            if (!userId.equals(buyerId)) {
+                return new ResponseEntity<>("Unauthorized: Only the buyer can pay for this order", HttpStatus.FORBIDDEN);
+            }
+            
+            // Create checkout session and append orderId to successUrl
+            String finalSuccessUrl = successUrl + "&orderId=" + orderId;
+            Session session = paymentService.createCheckoutSessionForOrder(order, finalSuccessUrl, cancelUrl);
+            return new ResponseEntity<>(session.getUrl(), HttpStatus.OK);
+        } catch (StripeException e) {
+            return new ResponseEntity<>("Stripe error: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
         } catch (IllegalArgumentException e) {
             return new ResponseEntity<>("Error: " + e.getMessage(), HttpStatus.BAD_REQUEST);
         } catch (Exception e) {
@@ -224,9 +261,9 @@ public class OrderController {
             if (!userId.equals(buyerId)) {
                 return new ResponseEntity<>("Unauthorized: Only the buyer can pay for this order", HttpStatus.FORBIDDEN);
             }
-            String successUrl = "https://yourdomain.com/payment-success?session_id={CHECKOUT_SESSION_ID}";
-            String cancelUrl = "https://yourdomain.com/payment-cancel";
-            Session session = paymentService.createCheckoutSessionForOrder(order, successUrl, cancelUrl);
+            // Create checkout session and append orderId to successUrl
+            String finalSuccessUrl = successUrl + "&orderId=" + orderId;
+            Session session = paymentService.createCheckoutSessionForOrder(order, finalSuccessUrl, cancelUrl);
             return new ResponseEntity<>(session.getUrl(), HttpStatus.OK);
         } catch (StripeException e) {
             return new ResponseEntity<>("Stripe error: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);

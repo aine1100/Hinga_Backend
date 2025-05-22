@@ -1,22 +1,21 @@
 package com.Hinga.farmMis.Dto.Request;
 
-import com.Hinga.farmMis.Model.Cart;
 import com.Hinga.farmMis.utils.Address;
 import java.time.LocalDate;
 import java.util.List;
 
 public class OrderRequest {
-    private List<Cart> carts;
+    private List<Long> selectedCartIds;
     private LocalDate deliveryDate;
     private Address deliveryAddress;
 
     // Getters and Setters
-    public List<Cart> getCarts() {
-        return carts;
+    public List<Long> getSelectedCartIds() {
+        return selectedCartIds;
     }
 
-    public void setCarts(List<Cart> carts) {
-        this.carts = carts;
+    public void setSelectedCartIds(List<Long> selectedCartIds) {
+        this.selectedCartIds = selectedCartIds;
     }
 
     public LocalDate getDeliveryDate() {

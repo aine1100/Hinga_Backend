@@ -208,7 +208,7 @@ public class OrderService {
         return orders;
     }
 
-    // Approve an order (set status to SHIPPED)
+    // Approve an order (set status to APPROVED)
     @Transactional
     public Orders approveOrder(Long orderId, Long farmerId) {
         Orders order = orderRepository.findById(orderId)
@@ -228,6 +228,11 @@ public class OrderService {
             throw new IllegalArgumentException("Unauthorized: Order does not contain any livestock from this farmer");
         }
 
+        // Check payment status
+        if (order.getPaymentStatus() != PaymentStatus.PAID) {
+            throw new IllegalArgumentException("Cannot approve order: Payment is not completed");
+        }
+
         // Only update status for carts belonging to this farmer
         order.getCarts().stream()
             .filter(cart -> cart.getLivestock() != null &&
@@ -235,7 +240,7 @@ public class OrderService {
                     cart.getLivestock().getFarmer().getId().equals(farmerId))
             .forEach(cart -> cart.setOrdered(true));
 
-        order.setOrderStatus(OrderStatus.SHIPPED);
+        order.setOrderStatus(OrderStatus.APPROVED);
         return orderRepository.save(order);
     }
 
@@ -442,5 +447,92 @@ public class OrderService {
         summary.setOrdersWithBuyerInfo(ordersWithBuyerInfo);
         
         return summary;
+    }
+
+    @Transactional
+    public OrderResponse createOrderFromSelectedCarts(Orders order, List<Long> selectedCartIds, Long buyerId) {
+        // Validate input
+        if (order == null) {
+            throw new IllegalArgumentException("Order cannot be null");
+        }
+        if (selectedCartIds == null || selectedCartIds.isEmpty()) {
+            throw new IllegalArgumentException("At least one cart ID must be selected");
+        }
+        if (order.getDeliveryAddress() == null ||
+                order.getDeliveryAddress().getProvince() == null || order.getDeliveryAddress().getProvince().trim().isEmpty() ||
+                order.getDeliveryAddress().getDistrict() == null || order.getDeliveryAddress().getDistrict().trim().isEmpty() ||
+                order.getDeliveryAddress().getSector() == null || order.getDeliveryAddress().getSector().trim().isEmpty() ||
+                order.getDeliveryAddress().getCell() == null || order.getDeliveryAddress().getCell().trim().isEmpty() ||
+                order.getDeliveryAddress().getVillage() == null || order.getDeliveryAddress().getVillage().trim().isEmpty()) {
+            throw new IllegalArgumentException("All delivery address fields are required");
+        }
+
+        // Fetch carts with livestock and farmer eagerly
+        List<Cart> selectedCarts = cartRepository.findByIdInAndBuyerId(selectedCartIds, buyerId);
+        if (selectedCarts.isEmpty()) {
+            throw new IllegalArgumentException("No valid carts found for the provided IDs");
+        }
+
+        // Validate carts
+        for (Cart cart : selectedCarts) {
+            if (cart.getLivestock() == null) {
+                throw new IllegalArgumentException("Cart ID " + cart.getId() + " has no associated livestock");
+            }
+            if (cart.getLivestock().getFarmer() == null) {
+                throw new IllegalArgumentException("Livestock ID " + cart.getLivestock().getLivestockId() + " has no associated farmer");
+            }
+            if (!cart.getBuyer().getId().equals(buyerId)) {
+                throw new IllegalArgumentException("Unauthorized: Cart ID " + cart.getId() + " does not belong to this user");
+            }
+            if (cart.getQuantity() > cart.getLivestock().getQuantity()) {
+                throw new IllegalArgumentException("Requested quantity (" + cart.getQuantity() + ") exceeds available stock (" + cart.getLivestock().getQuantity() + ") for cart ID " + cart.getId());
+            }
+        }
+
+        // Set the selected carts to the order
+        order.setCarts(selectedCarts);
+        order.setOrderDate(LocalDate.now());
+        order.setOrderStatus(OrderStatus.PENDING);
+
+        // Save the order first
+        Orders savedOrder = orderRepository.save(order);
+        logger.info("Saved order with ID: {}, associated carts: {}", savedOrder.getId(), 
+            selectedCarts.stream().map(Cart::getId).collect(Collectors.toList()));
+
+        // Update livestock quantity and mark carts as ordered
+        for (Cart cart : selectedCarts) {
+            int newStock = (int) (cart.getLivestock().getQuantity() - cart.getQuantity());
+            if (newStock < 0) {
+                throw new IllegalArgumentException("Stock cannot be negative for livestock ID " + cart.getLivestock().getLivestockId());
+            }
+            cart.getLivestock().setQuantity(newStock);
+            livestockRepository.save(cart.getLivestock());
+
+            // Update cart with order reference and mark as ordered
+            cart.getOrders().add(savedOrder);
+            cart.setOrdered(true);
+            cartRepository.save(cart);
+        }
+
+        // Create response with buyer information
+        OrderResponse response = new OrderResponse();
+        response.setId(savedOrder.getId());
+        response.setOrderDate(savedOrder.getOrderDate());
+        response.setDeliveryDate(savedOrder.getDeliveryDate());
+        response.setOrderStatus(savedOrder.getOrderStatus());
+        response.setPaymentStatus(savedOrder.getPaymentStatus());
+        response.setDeliveryAddress(savedOrder.getDeliveryAddress());
+        response.setCarts(savedOrder.getCarts());
+        
+        // Add buyer information
+        response.setBuyerName(order.getBuyerName());
+        response.setBuyerPhone(order.getBuyerPhone());
+        
+        // Get buyer email from the first cart
+        if (!selectedCarts.isEmpty() && selectedCarts.get(0).getBuyer() != null) {
+            response.setBuyerEmail(selectedCarts.get(0).getBuyer().getEmail());
+        }
+
+        return response;
     }
 }
