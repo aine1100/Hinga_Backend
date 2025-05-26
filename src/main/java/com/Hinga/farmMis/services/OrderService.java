@@ -33,15 +33,17 @@ public class OrderService {
     private final UserRepository userRepository;
     private final LivestockRepository livestockRepository;
     private final CartService cartService;
+    private final NotificationService notificationService;
 
     public OrderService(OrderRepository orderRepository, CartRepository cartRepository, 
                        UserRepository userRepository, LivestockRepository livestockRepository,
-                       CartService cartService) {
+                       CartService cartService, NotificationService notificationService) {
         this.orderRepository = orderRepository;
         this.cartRepository = cartRepository;
         this.userRepository = userRepository;
         this.livestockRepository = livestockRepository;
         this.cartService = cartService;
+        this.notificationService = notificationService;
     }
 
     // Create an order from a single cart
@@ -148,6 +150,15 @@ public class OrderService {
         cart.setOrdered(true);
         cartRepository.save(cart);
 
+        // Send notification to farmer
+        Users farmer = cart.getLivestock().getFarmer();
+        notificationService.createNotification(
+            farmer,
+            "New order #" + savedOrder.getId() + " has been placed for your livestock.",
+            "ORDER_CREATED",
+            savedOrder
+        );
+
         // Create response with buyer information
         OrderResponse response = new OrderResponse();
         response.setId(savedOrder.getId());
@@ -213,35 +224,27 @@ public class OrderService {
     public Orders approveOrder(Long orderId, Long farmerId) {
         Orders order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new IllegalArgumentException("Order not found with ID: " + orderId));
-        Users farmer = userRepository.findById(farmerId);
-        if(farmer == null) {
-            throw new IllegalArgumentException("Farmer not found with ID: " + farmerId);
-        }
 
-        // Check if any cart in the order belongs to this farmer
-        boolean hasFarmerLivestock = order.getCarts().stream()
-                .anyMatch(cart -> cart.getLivestock() != null &&
-                        cart.getLivestock().getFarmer() != null &&
-                        cart.getLivestock().getFarmer().getId().equals(farmerId));
-        
-        if (!hasFarmerLivestock) {
-            throw new IllegalArgumentException("Unauthorized: Order does not contain any livestock from this farmer");
+        // Verify the farmer owns the livestock in the order
+        boolean isFarmerAuthorized = order.getCarts().stream()
+                .anyMatch(cart -> cart.getLivestock().getFarmer().getId().equals(farmerId));
+        if (!isFarmerAuthorized) {
+            throw new IllegalArgumentException("Unauthorized: Farmer does not own the livestock in this order");
         }
-
-        // Check payment status
-        if (order.getPaymentStatus() != PaymentStatus.PAID) {
-            throw new IllegalArgumentException("Cannot approve order: Payment is not completed");
-        }
-
-        // Only update status for carts belonging to this farmer
-        order.getCarts().stream()
-            .filter(cart -> cart.getLivestock() != null &&
-                    cart.getLivestock().getFarmer() != null &&
-                    cart.getLivestock().getFarmer().getId().equals(farmerId))
-            .forEach(cart -> cart.setOrdered(true));
 
         order.setOrderStatus(OrderStatus.APPROVED);
-        return orderRepository.save(order);
+        Orders savedOrder = orderRepository.save(order);
+
+        // Send notification to buyer
+        Users buyer = order.getCarts().get(0).getBuyer();
+        notificationService.createNotification(
+            buyer,
+            "Your order #" + orderId + " has been approved by the farmer.",
+            "ORDER_APPROVED",
+            savedOrder
+        );
+
+        return savedOrder;
     }
 
     // Cancel an order (set status to CANCELLED)
@@ -249,30 +252,27 @@ public class OrderService {
     public Orders cancelOrder(Long orderId, Long farmerId) {
         Orders order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new IllegalArgumentException("Order not found with ID: " + orderId));
-        Users farmer = userRepository.findById(farmerId);
-        if(farmer==null) {
-            throw new IllegalArgumentException("Farmer not found with ID: " + farmerId);
-        }
 
-        // Check if any cart in the order belongs to this farmer
-        boolean hasFarmerLivestock = order.getCarts().stream()
-                .anyMatch(cart -> cart.getLivestock() != null &&
-                        cart.getLivestock().getFarmer() != null &&
-                        cart.getLivestock().getFarmer().getId().equals(farmerId));
-        
-        if (!hasFarmerLivestock) {
-            throw new IllegalArgumentException("Unauthorized: Order does not contain any livestock from this farmer");
+        // Verify the farmer owns the livestock in the order
+        boolean isFarmerAuthorized = order.getCarts().stream()
+                .anyMatch(cart -> cart.getLivestock().getFarmer().getId().equals(farmerId));
+        if (!isFarmerAuthorized) {
+            throw new IllegalArgumentException("Unauthorized: Farmer does not own the livestock in this order");
         }
-
-        // Only update status for carts belonging to this farmer
-        order.getCarts().stream()
-            .filter(cart -> cart.getLivestock() != null &&
-                    cart.getLivestock().getFarmer() != null &&
-                    cart.getLivestock().getFarmer().getId().equals(farmerId))
-            .forEach(cart -> cart.setOrdered(false));
 
         order.setOrderStatus(OrderStatus.CANCELLED);
-        return orderRepository.save(order);
+        Orders savedOrder = orderRepository.save(order);
+
+        // Send notification to buyer
+        Users buyer = order.getCarts().get(0).getBuyer();
+        notificationService.createNotification(
+            buyer,
+            "Your order #" + orderId + " has been cancelled by the farmer.",
+            "ORDER_CANCELLED",
+            savedOrder
+        );
+
+        return savedOrder;
     }
 
     // Get order details by ID
@@ -353,6 +353,17 @@ public class OrderService {
             cart.getOrders().add(savedOrder);
             cart.setOrdered(true);
             cartRepository.save(cart);
+        }
+
+        // Send notification to farmer
+        for (Cart cart : savedOrder.getCarts()) {
+            Users farmer = cart.getLivestock().getFarmer();
+            notificationService.createNotification(
+                farmer,
+                "New order #" + savedOrder.getId() + " has been placed for your livestock.",
+                "ORDER_CREATED",
+                savedOrder
+            );
         }
 
         // Create response with buyer information
@@ -512,6 +523,17 @@ public class OrderService {
             cart.getOrders().add(savedOrder);
             cart.setOrdered(true);
             cartRepository.save(cart);
+        }
+
+        // Send notification to farmer
+        for (Cart cart : savedOrder.getCarts()) {
+            Users farmer = cart.getLivestock().getFarmer();
+            notificationService.createNotification(
+                farmer,
+                "New order #" + savedOrder.getId() + " has been placed for your livestock.",
+                "ORDER_CREATED",
+                savedOrder
+            );
         }
 
         // Create response with buyer information

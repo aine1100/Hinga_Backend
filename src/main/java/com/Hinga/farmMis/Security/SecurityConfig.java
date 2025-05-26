@@ -41,9 +41,11 @@ public class SecurityConfig {
                         // Permit access to specific public routes
                         .requestMatchers("/api/auth/**", "/api/auth/farmerRegister","/api/auth/farmerLogin","/api/weather","api/cart/**","api/products/all","api/auth/v2/**","api/livestock/**").permitAll()
                         .requestMatchers("/api/payments/**").permitAll()
-                        .requestMatchers("/api/auth/**").hasAnyAuthority("FARMER").
-                        requestMatchers("api/orders/**").permitAll()
+                        .requestMatchers("/api/auth/**").hasAnyAuthority("FARMER")
+                        .requestMatchers("api/orders/**").permitAll()
                         .requestMatchers("/uploads/**").permitAll()
+                        // Add notification endpoints
+                        .requestMatchers("/api/notifications/**").permitAll()
                         // Restrict /api/auth/admin route to ROLE_ADMIN
                         .requestMatchers("/api/auth/admin").hasAnyAuthority("ROLE_ADMIN")
                         // Ensure all other requests are authenticated
@@ -51,7 +53,7 @@ public class SecurityConfig {
                 )
                 .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authenticationProvider(authenticationProvider())
-                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class); // Correct filter position
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
@@ -73,6 +75,7 @@ public class SecurityConfig {
     public AuthenticationManager authenticationManager(AuthenticationConfiguration configuration) throws Exception {
         return configuration.getAuthenticationManager();
     }
+
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
