@@ -217,6 +217,17 @@ public class LiveStockController {
             return ResponseEntity.status(500).body("Error retrieving livestock: " + e.getMessage());
         }
     }
+    @GetMapping("/allProducts")
+    public ResponseEntity<?> getMarketPlaceProducts() {
+        try {
+
+            List<Livestock> livestock = livestockService.getAllLivestockForBuyers();
+            return ResponseEntity.status(200).body(livestock);
+
+        } catch (Exception e) {
+            return ResponseEntity.status(400).body("Error In Getting livestock: " + e.getMessage());
+        }
+    }
 
     private boolean isValidToken(String token) {
         try {

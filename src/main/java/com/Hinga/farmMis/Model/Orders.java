@@ -20,12 +20,17 @@ public class Orders {
         inverseJoinColumns = @JoinColumn(name = "cart_id")
     )
     private java.util.List<Cart> carts;
+
     private LocalDate orderDate;
+
     private LocalDate deliveryDate;
+
     @Embedded
     private Address deliveryAddress;
+
     @Enumerated(EnumType.STRING)
     private OrderStatus orderStatus;
+
     @Enumerated(EnumType.STRING)
     private PaymentStatus paymentStatus = PaymentStatus.PENDING;
 

@@ -4,6 +4,8 @@ import com.Hinga.farmMis.Constants.PaymentStatus;
 import com.Hinga.farmMis.Model.Orders;
 import com.Hinga.farmMis.Model.Cart;
 import com.Hinga.farmMis.Model.Payment;
+import com.Hinga.farmMis.Model.FinanceStatistics;
+import com.Hinga.farmMis.Model.Livestock;
 import com.Hinga.farmMis.repository.OrderRepository;
 import com.Hinga.farmMis.repository.PaymentRepository;
 import com.stripe.Stripe;
@@ -19,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 import jakarta.annotation.PostConstruct;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -26,14 +29,16 @@ import java.util.List;
 public class PaymentService {
     private final PaymentRepository paymentRepository;
     private final OrderRepository orderRepository;
+    private final FinanceStatisticsService financeStatisticsService;
 
     @Value("${stripe.api.key}")
     private String stripeApiKey;
 
     @Autowired
-    public PaymentService(PaymentRepository paymentRepository, OrderRepository orderRepository) {
+    public PaymentService(PaymentRepository paymentRepository, OrderRepository orderRepository, FinanceStatisticsService financeStatisticsService) {
         this.paymentRepository = paymentRepository;
         this.orderRepository = orderRepository;
+        this.financeStatisticsService = financeStatisticsService;
     }
 
     @PostConstruct
@@ -225,6 +230,27 @@ public class PaymentService {
             // Save payment record
             paymentRepository.save(payment);
             System.out.println("Payment record created for order " + orderId + ". Payment ID: " + payment.getId());
+
+            // Record finance statistics for each product in the order
+            for (Cart cart : order.getCarts()) {
+                FinanceStatistics fs = new FinanceStatistics();
+                fs.setFarmer(cart.getLivestock().getFarmer());
+                fs.setProduct(cart.getLivestock());
+                fs.setTotalAmount(cart.getLivestock().getPrice() * cart.getQuantity());
+                fs.setQuantitySold(cart.getQuantity().intValue());
+                fs.setTransactionDate(LocalDateTime.now());
+                fs.setPaymentStatus(PaymentStatus.PAID.toString());
+                fs.setProductCategory(cart.getLivestock().getType());
+
+                // Set month, year, quarter for analytics
+                LocalDateTime transactionDateTime = LocalDateTime.now();
+                fs.setMonth(transactionDateTime.format(DateTimeFormatter.ofPattern("yyyy-MM")));
+                fs.setYear(String.valueOf(transactionDateTime.getYear()));
+                fs.setQuarter("Q" + ((transactionDateTime.getMonthValue() - 1) / 3 + 1) + "-" + transactionDateTime.getYear());
+
+                financeStatisticsService.saveTransaction(fs);
+                System.out.println("Finance statistics recorded for product: " + cart.getLivestock().getType() + ", Quantity: " + cart.getQuantity());
+            }
 
         } catch (NumberFormatException e) {
             System.err.println("Error in webhook: Invalid orderId format in metadata: " + orderIdString);

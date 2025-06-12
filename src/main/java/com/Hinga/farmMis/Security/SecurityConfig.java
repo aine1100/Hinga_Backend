@@ -39,11 +39,12 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
                         // Permit access to specific public routes
-                        .requestMatchers("/api/auth/**", "/api/auth/farmerRegister","/api/auth/farmerLogin","/api/weather","api/cart/**","api/products/all","api/auth/v2/**","api/livestock/**").permitAll()
+                        .requestMatchers("/api/auth/**", "/api/auth/farmerRegister","/api/auth/farmerLogin","/api/weather","api/cart/**","api/products/all","api/auth/v2/**","api/livestock/**","api/finance/**").permitAll()
                         .requestMatchers("/api/payments/**").permitAll()
                         .requestMatchers("/api/auth/**").hasAnyAuthority("FARMER")
                         .requestMatchers("api/orders/**").permitAll()
                         .requestMatchers("/uploads/**").permitAll()
+                        .requestMatchers("/api/livestock/v2/allProducts").permitAll()
                         // Add notification endpoints
                         .requestMatchers("/api/notifications/**").permitAll()
                         // Restrict /api/auth/admin route to ROLE_ADMIN
